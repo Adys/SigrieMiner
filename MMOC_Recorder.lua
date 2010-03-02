@@ -377,11 +377,11 @@ Recorder.InteractSpells = {
 	-- Mining
 	[GetSpellInfo(2575) or ""] = {item = true, location = true},
 	-- Disenchanting
-	[GetSpellInfo(13262) or ""] = {item = true, location = false, parentItem = true},
+	[GetSpellInfo(13262) or ""] = {item = true, location = false, parentItem = true, lootType = "disenchanting"},
 	-- Milling
-	[GetSpellInfo(51005) or ""] = {item = true, location = false, parentItem = true},
+	[GetSpellInfo(51005) or ""] = {item = true, location = false, parentItem = true, lootType = "milling"},
 	-- Prospecting
-	[GetSpellInfo(31252) or ""] = {item = true, location = false, parentItem = true},
+	[GetSpellInfo(31252) or ""] = {item = true, location = false, parentItem = true, lootType = "prospecting"},
 	-- Skinning
 	[GetSpellInfo(8613) or ""] = {item = true, location = false, parentNPC = true, lootType = "skinning"},
 	-- Engineering
@@ -391,7 +391,7 @@ Recorder.InteractSpells = {
 	-- Pick Pocket
 	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
 	-- Used when opening an item, such as Champion's Purse
-	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true},
+	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true, lootType = "items"},
 	-- Pick Lock
 	--[GetSpellInfo(1804) or ""] = {item = true, location = false, parentItem = true},
 }
@@ -836,6 +836,10 @@ function Recorder:LOOT_OPENED()
 			npcData = self:RecordDataLocation("objects", self.activeSpell.target)
 		-- Parent item, Milling, Prospecting, Looting items like Bags, etc
 		elseif( activeObject.parentItem ) then
+			if( activeObject.lootType ) then
+				debug(4, "Discarding %s loot", activeObject.lootType)
+				return
+			end
 			-- Throttle it by the items unique id, default to the last known link if finding by lock failed
 			local itemID, uniqueID = string.match(self.activeSpell.useLock and self:FindByLock() or self.activeSpell.item, "item:(%d+):%d+:%d+:%d+:%d+:%d+:%d+:(%d+)")
 			itemID = tonumber(itemID)
@@ -849,9 +853,9 @@ function Recorder:LOOT_OPENED()
 				if( lootedGUID[uniqueID] ) then return end
 				lootedGUID[uniqueID] = time + LOOT_EXPIRATION
 			end
-		
+			
 			debug(4, "Looting item id %s, unique id %d", GetItemInfo(itemID), uniqueID)
-		  
+			
 			-- Still good
 			npcData = self:GetBasicData("items", itemID)
 			
