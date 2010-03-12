@@ -391,7 +391,7 @@ Recorder.InteractSpells = {
 	-- Pick Pocket
 	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
 	-- Used when opening an item, such as Champion's Purse
-	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true, lootType = "items"},
+	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true},
 	-- Pick Lock
 	--[GetSpellInfo(1804) or ""] = {item = true, location = false, parentItem = true},
 }
@@ -821,6 +821,11 @@ function Recorder:LOOT_CLOSED()
 end
 
 function Recorder:LOOT_OPENED()
+	local _, _, latency = GetNetStats()
+	if latency > 400 then
+		debug(4, "Discarding loot because of lag")
+		return
+	end
 	local npcData, isMob
 	local time = GetTime()
 	local activeObject = self.activeSpell.object
