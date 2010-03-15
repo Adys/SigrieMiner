@@ -702,6 +702,7 @@ function Recorder:UpdateMerchantData(npcData)
 	for i=1, GetMerchantNumItems() do
 		local name, _, price, quantity, limitedQuantity, _, extendedCost = GetMerchantItemInfo(i)
 		if( name ) then
+			local discard = false
 			price = price / factionDiscount	
 			
 			local itemCost, bracket, rating
@@ -722,31 +723,35 @@ function Recorder:UpdateMerchantData(npcData)
 					itemCost[costItemID] = amount
 					
 					quickID = quickID + costItemID + amount
+				else
+					debug(3, "Item cost %i for %s not cached, discarding", extendedIndex, name)
+					discard = true
 				end
 			end
 			
 			honor = honor > 0 and honor or nil
 			arena = arena > 0 and arena or nil
 			
-			-- Can NPCs sell anything besides items? I don't think so
-			local itemData = quickSoldMap[quickID]
-			if( not itemData ) then
-				itemData = {}
-				table.insert(npcData.sold, itemData)
-			else
-				quantity = math.max(itemData.quantity, quantity)
-				limitedQuantity = itemData.limitedQuantity and math.max(itemData.limitedQuantity, limitedQuantity)
-			end
+			if not discard then -- Something went wrong/isn't cached
+				local itemData = quickSoldMap[quickID]
+				if( not itemData ) then
+					itemData = {}
+					table.insert(npcData.sold, itemData)
+				else
+					quantity = math.max(itemData.quantity, quantity)
+					limitedQuantity = itemData.limitedQuantity and math.max(itemData.limitedQuantity, limitedQuantity)
+				end
 
-			itemData.id = itemID
-			itemData.price = price
-			itemData.quantity = quantity
-			itemData.limitedQuantity = limitedQuantity and limitedQuantity > 0 and limitedQuantity or nil
-			itemData.honor = honor
-			itemData.arena = arena
-			itemData.rating = rating
-			itemData.bracket = bracket
-			itemData.itemCost = itemCost
+				itemData.id = itemID
+				itemData.price = price
+				itemData.quantity = quantity
+				itemData.limitedQuantity = limitedQuantity and limitedQuantity > 0 and limitedQuantity or nil
+				itemData.honor = honor
+				itemData.arena = arena
+				itemData.rating = rating
+				itemData.bracket = bracket
+				itemData.itemCost = itemCost
+			end
 		end
 	end
 end
