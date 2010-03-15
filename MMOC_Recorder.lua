@@ -118,7 +118,6 @@ function Recorder:ADDON_LOADED(event, addon)
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA")	
 	self:RegisterEvent("PLAYER_LOGIN")
-	--self:RegisterEvent("ITEM_TEXT_READY")
 	self:RegisterEvent("ITEM_TEXT_BEGIN")
 	self:RegisterEvent("PETITION_VENDOR_SHOW")
 	self:RegisterEvent("CONFIRM_TALENT_WIPE")
@@ -1172,10 +1171,10 @@ end
 -- We're looking at the details of the quest, save the quest info so we can use it later
 function Recorder:QUEST_DETAIL(event)
 	-- When a quest is shared with the player, "npc" is actually the "player" unitid
-	if( UnitIsPlayer("npc") ) then
-		questGiverType, questGiverID = nil, nil
-		return
-	end
+	if UnitIsPlayer("npc") then return end
+	
+	-- We don't want to record non-accepted quests
+	if not IsQuestCompletable() then return end
 	
 	self:QuestProgress()
 end
