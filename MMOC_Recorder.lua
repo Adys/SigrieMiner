@@ -589,10 +589,10 @@ end
 -- Add all of the data like title, health, power, faction, etc here
 function Recorder:GetCreatureDB(unit)
 	local guid = UnitGUID(unit)
-	if( not guid ) then return end
+	if not guid then return end
 	
 	local npcID, npcType = self.GUID_ID[guid], self.GUID_TYPE[guid]
-	if( not npcID or not npcType ) then return end
+	if not npcID or not npcType then return end
 	
 	return self:GetData(npcToDB[npcType], ZONE_DIFFICULTY, npcID), npcID, npcType
 end
@@ -604,7 +604,7 @@ end
 
 function Recorder:RecordCreatureData(type, unit)
 	local npcData, npcID, npcType = self:GetCreatureDB(unit)
-	if( not npcData ) then return end
+	if not npcData then return end
 
 	local hasAura = UnitAura(unit, 1, "HARMFUL") or UnitAura(unit, 1, "HELPFUL")
 	local level = UnitLevel(unit)
@@ -636,14 +636,6 @@ end
 
 -- Record trainer data
 local playerCache
-function Recorder:CONFIRM_TALENT_WIPE()
-	local npcData = self:GetCreatureDB("npc")
-	if( npcData ) then
-		npcData.info.canReset = CheckTalentMasterDist()
-		
-		debug(4, "NPC can reset talents? %s", tostring(npcData.info.canReset))
-	end
-end
 
 function Recorder:UpdateTrainerData(npcData)
 	-- No sense in recording training data unless the data was reset. It's not going to change
@@ -1287,13 +1279,29 @@ function Recorder:BANKFRAME_OPENED()
 end
 
 function Recorder:CONFIRM_XP_LOSS()
-	self:RecordCreatureData("spiritres", "npc")
+	local unit = UnitExists("npc") and not UnitIsPlayer("npc") and "npc"
+	local inRange = CheckSpiritHealerDist()
+	if unit and inRange then
+		self:RecordCreatureData("spiritres", "npc")
+		debug(4, "NPC %s can spirit res", UnitName(unit))
+	end
 end
 
 function Recorder:CONFIRM_BINDER()
 	local unit = UnitExists("npc") and not UnitIsPlayer("npc") and "npc" or UnitExists("target") and not UnitIsPlayer("target") and "target"
-	if( unit ) then
+	local inRange = CheckBinderDist() -- Sanity check
+	if unit and inRange then
 		self:RecordCreatureData("binder", unit)
+		debug(4, "NPC %s can bind hearthstone", UnitName(unit))
+	end
+end
+
+function Recorder:CONFIRM_TALENT_WIPE()
+	local unit = UnitExists("npc") and not UnitIsPlayer("npc") and "npc"
+	local inRange = CheckTalentMasterDist() -- Sanity check
+	if unit and inRange then
+		self:RecordCreatureData("talentwipe", "npc")
+		debug(4, "NPC %s can reset talents", UnitName(unit))
 	end
 end
 
