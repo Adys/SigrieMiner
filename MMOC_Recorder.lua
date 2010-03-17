@@ -9,15 +9,59 @@ local DEBUG_LEVEL = 4
 local ALLOWED_COORD_DIFF = 0.02
 local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
+local RECORD_TIMER = 0.50 -- Timer between last relevant event and GetTime() to acquire a loot source
+local LOOT_MAX_LATENCY = 400 -- In milliseconds, discard loot recording if latency is superior
 
 local npcToDB = {["npc"] = "npcs", ["item"] = "items", ["object"] = "objects"}
 local NPC_TYPES = {["mailbox"] = 0x01, ["auctioneer"] = 0x02, ["battlemaster"] = 0x04, ["binder"] = 0x08, ["bank"] = 0x10, ["guildbank"] = 0x20, ["canrepair"] = 0x40, ["flightmaster"] = 0x80, ["stable"] = 0x100, ["tabard"] = 0x200, ["vendor"] = 0x400, ["trainer"] = 0x800, ["spiritres"] = 0x1000, ["book"] = 0x2000, ["talentwipe"] = 0x4000, ["arenaorg"] = 0x8000, ["petition"] = 0x10000}
 local BATTLEFIELD_TYPES = {["av"] = 1, ["wsg"] = 2, ["ab"] = 3, ["nagrand"] = 4, ["bem"] = 5, ["all_arenas"] = 6, ["eots"] = 7, ["rol"] = 8, ["sota"] = 9, ["dalaran"] = 10, ["rov"] = 11, ["ioc"] = 30, ["all_battlegrounds"] = 32}
 local BATTLEFIELD_MAP = {[L["Alterac Valley"]] = "av", [L["Warsong Gulch"]] = "wsg", [L["Eye of the Storm"]] = "eots", [L["Strand of the Ancients"]] = "sota", [L["Isle of Conquest"]] = "ioc", [L["All Arenas"]] = "all_arenas"}
+
 -- Items to ignore when looted in a *regular* way
-local IGNORE_LOOT = {[11082] = true, [34055] = true, [16203] = true, [10939] = true, [11135] = true, [11175] = true, [22446] = true, [10998] = true, [34056] = true, [16202] = true, [10938] = true, [11134] = true, [11174] = true, [2244] = true, [34054] = true, [22445] = true, [11176] = true, [16204] = true, [34054] = true, [11083] = true, [10940] = true, [11137] = true, [49640] = true}
--- Daze
-local SPELL_BLACKLIST = {[1604] = true}
+-- Note: Disenchant loots exist (AQ) but should be manually added to the DB
+-- Attempting to loot an item between END_ROLL and CHECK_INVENTORY causes it
+-- to be disenchanted on-spot if it was won by a disenchanting roll.
+local IGNORE_LOOT = {
+	[10938] = true, -- Lesser Magic Essence
+	[10939] = true, -- Greater Magic Essence
+	[10940] = true, -- Strange Dust
+	[10978] = true, -- Small Glimmering Shard
+	[10998] = true, -- Lesser Astral Essence
+	[11082] = true, -- Greater Astral Essence
+	[11083] = true, -- Soul Dust
+	[11084] = true, -- Large Glimmering Shard
+	[11134] = true, -- Lesser Mystic Essence
+	[11135] = true, -- Greater Mystic Essence
+	[11137] = true, -- Vision Dust
+	[11138] = true, -- Small Glowing Shard
+	[11139] = true, -- Large Glowing Shard
+	[11174] = true, -- Lesser Nether Essence
+	[11175] = true, -- Greater Nether Essence
+	[11176] = true, -- Dream Dust
+	[11177] = true, -- Small Radiant Shard
+	[11178] = true, -- Large Radiant Shard
+	[14343] = true, -- Small Brilliant Shard
+	[14344] = true, -- Large Brilliant Shard
+	[16202] = true, -- Lesser Eternal Essence
+	[16203] = true, -- Greater Eternal Essence
+	[16204] = true, -- Illusion Dust
+	[20725] = true, -- Nexus Crystal
+	[22445] = true, -- Arcane Dust
+	[22446] = true, -- Greater Planar Essence
+	[22447] = true, -- Lesser Planar Essence
+	[22448] = true, -- Small Prismatic Shard
+	[22449] = true, -- Large Prismatic Shard
+	[22450] = true, -- Void Crystal
+	[34052] = true, -- Dream Shard
+	[34053] = true, -- Small Dream Shard
+	[34054] = true, -- Infinite Dust
+	[34055] = true, -- Greater Cosmic Essence
+	[34056] = true, -- Lesser Cosmic Essence
+	[34057] = true, -- Abyss Crystal
+--	[49640] = true, -- Essence or Dust
+}
+
+local SPELL_BLACKLIST = {[1604] = true} -- Spells not recorded as casted by the npc (Dazed)
 
 local setToAbandon, abandonedName, lootedGUID
 local repGain, lootedGUID = {}, {}
@@ -25,7 +69,7 @@ local playerName = UnitName("player")
 
 if( DEBUG_LEVEL > 0 ) then MMOCRecorder = Recorder end
 local function debug(level, msg, ...)
-	if( level <= DEBUG_LEVEL ) then
+	if level <= DEBUG_LEVEL then
 		print(string.format(msg, ...))
 	end
 end
@@ -383,6 +427,8 @@ Recorder.InteractSpells = {
 	[GetSpellInfo(31252) or ""] = {item = true, location = false, parentItem = true, lootType = "prospecting"},
 	-- Skinning
 	[GetSpellInfo(8613) or ""] = {item = true, location = false, parentNPC = true, lootType = "skinning"},
+	-- Herb Gathering
+	[GetSpellInfo(32605) or ""] = {item = true, location = false, parentNPC = true, lootType = "herbing"},
 	-- Engineering
 	[GetSpellInfo(49383) or ""] = {item = true, location = false, parentNPC = true, lootType = "engineering"},
 	-- Fishing
@@ -772,11 +818,11 @@ end
 
 -- Track mobs that can't be pick pocketed
 function Recorder:UI_ERROR_MESSAGE(event, message)
-	if( message ~= SPELL_FAILED_TARGET_NO_POCKETS ) then return end
-
-	if( self.activeSpell.object and self.activeSpell.endTime <= (GetTime() + 0.50) ) then
+	if message ~= SPELL_FAILED_TARGET_NO_POCKETS then return end
+	
+	if self.activeSpell.object and self.activeSpell.endTime <= (GetTime() + RECORD_TIMER) then
 		local unit = self:FindUnit(self.activeSpell.target)
-		if( not unit ) then return end
+		if not unit then return end
 		
 		local npcData = self:GetCreatureDB(unit)
 		npcData.info = npcData.info or {}
@@ -798,25 +844,23 @@ local locksAllowed = {}
 function Recorder:FindByLock()
 	for bag=4, 0, -1 do
 		for slot=1, GetContainerNumSlots(bag) do
-		  -- Make sure the slot is locked
-			if( select(3, GetContainerItemInfo(bag, slot)) ) then
-			  local link = GetContainerItemLink(bag, slot)
-			  -- And we have an item in here of course, pretty sure this can't actually happen if it's locked, but to be safe
-  			if( link ) then
-  			  -- We're expecting to match this one exactly, meaning we have an uniqueid
-    			if( locksAllowed[link] == 2 ) then
-    			  return link
-          else
-            -- No uniqueid, strip it out and do an exact quick, assuming we're looking for an inequal
-            local parseLink = select(2, GetItemInfo(string.match(link, "item:%d+")))
-            if( locksAllowed[parseLink] == 1 ) then
-              return link
-            end
-          end
-        end
-      end
-    end
-  end
+			-- Make sure the slot is locked
+			if select(3, GetContainerItemInfo(bag, slot)) then
+				local link = GetContainerItemLink(bag, slot)
+				-- And we have an item in here of course, pretty sure this can't actually happen if it's locked, but to be safe
+				if link then
+					if locksAllowed[link] == 2 then -- We're expecting to match this one exactly, meaning we have an uniqueid
+						return link
+					else -- No uniqueid, strip it out and do an exact quick, assuming we're looking for an inequal
+						local parseLink = select(2, GetItemInfo(string.match(link, "item:%d+")))
+						if locksAllowed[parseLink] == 1 then
+							return link
+						end
+					end
+				end
+			end
+		end
+	end
 end
 
 function Recorder:LOOT_CLOSED()
@@ -826,7 +870,7 @@ end
 
 function Recorder:LOOT_OPENED()
 	local _, _, latency = GetNetStats()
-	if latency > 400 then
+	if latency > LOOT_MAX_LATENCY then
 		debug(4, "Discarding loot because of lag")
 		return
 	end
@@ -834,7 +878,7 @@ function Recorder:LOOT_OPENED()
 	local time = GetTime()
 	local activeObject = self.activeSpell.object
 	-- Object set, so looks like we're good
-	if( activeObject and self.activeSpell.endTime > 0 and (time - self.activeSpell.endTime) <= 0.50 ) then
+	if activeObject and self.activeSpell.endTime > 0 and (time - self.activeSpell.endTime) <= RECORD_TIMER then
 		self.activeSpell.endTime = -1
 		
 		-- We want to save it by the zone, this is really just for Fishing.
@@ -936,7 +980,8 @@ function Recorder:LOOT_OPENED()
 				npcData.loot[itemID].minStack = npcData.loot[itemID].minStack and math.min(npcData.loot[itemID].minStack, quantity) or quantity
 				npcData.loot[itemID].maxStack = npcData.loot[itemID].maxStack and math.max(npcData.loot[itemID].maxStack, quantity) or quantity
 				
-				debug(2, "Looted item %s from them %d out of %d times", GetItemInfo(itemID), npcData.loot[itemID].looted, npcData.looted)
+				local lootType = activeObject and activeObject.lootType or ""
+				debug(2, "Looted item %s from them %d out of %d times (%s)", GetItemInfo(itemID), npcData.loot[itemID].looted, npcData.looted, lootType)
 			end
 		end
 	end
@@ -1102,8 +1147,7 @@ function Recorder:QUEST_LOG_UPDATE(event)
 					end
 				end
 				
-				
-				debug(1, "Quest #%d starts at %s #%d, timer? %s.", questID, questGiverType or "nil", questGiverID or -1, questData.timer and (questData.timer .. " seconds") or "none")
+				debug(2, "Quest #%d starts at %s #%d, timer? %i seconds.", questID, questGiverType or "nil", questGiverID or -1, questData.timer or 0)
 				self:RecordQuestPOI(questID)
 			end
 		end
@@ -1117,7 +1161,7 @@ function Recorder:QUEST_LOG_UPDATE(event)
 				questLog[questID] = nil
 				abandonedName = nil
 				
-				debug(1, "Quest #%d abandoned", questID)
+				debug(2, "Quest #%d abandoned", questID)
 				break
 			elseif( not abandonedName and questGiverID ) then
 				questLog[questID] = nil
@@ -1126,7 +1170,7 @@ function Recorder:QUEST_LOG_UPDATE(event)
 				local questData = self:GetBasicData("quests", questID)
 				questData.endsID = questGiverID * (questGiverType == "npc" and 1 or -1)
 				
-				debug(1, "Quest #%d ends at %s #%d.", questID, questGiverType or "nil", questGiverID or -1)	
+				debug(2, "Quest #%d ends at %s #%d.", questID, questGiverType or "nil", questGiverID or -1)	
 			end
 		end
 	end
@@ -1302,7 +1346,7 @@ end
 function Recorder:UpdateDifficulty()
 	if( not IsInInstance() ) then
 		ZONE_DIFFICULTY = "world"
-		debug(1, "Player is not in a zone, set key to world")
+		debug(2, "Player is not in a zone, set key to world")
 		return
 	end
 
@@ -1317,7 +1361,7 @@ function Recorder:UpdateDifficulty()
 	end
 
 	ZONE_DIFFICULTY = string.format("%s:%s:%s", instanceType, maxPlayers, dungeonType)
-	debug(1, "Set zone key to %s", ZONE_DIFFICULTY)
+	debug(2, "Set zone key to %s", ZONE_DIFFICULTY)
 end
 
 Recorder.UPDATE_INSTANCE_INFO = Recorder.UpdateDifficulty
