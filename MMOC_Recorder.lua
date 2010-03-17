@@ -61,6 +61,23 @@ local IGNORE_LOOT = {
 --	[49640] = true, -- Essence or Dust
 }
 
+local REPUTATION_MODIFIERS = {
+	[GetSpellInfo(20599)] = true, -- Diplomacy
+	[GetSpellInfo(24705)] = true, -- Invocation of the Wickerman
+	[GetSpellInfo(30754)] = true, -- Cenarion Favor
+	[GetSpellInfo(32098)] = true, -- Honor Hold's Favor
+	[GetSpellInfo(39913)] = true, -- Nazgrel's Fervor
+	[GetSpellInfo(39953)] = true, -- A'dal's Song of Battle
+	[GetSpellInfo(58440)] = true, -- Pork Red Ribbon
+	[GetSpellInfo(61849)] = true, -- The Spirit of Sharing
+	
+	-- Championing - TODO record champion data
+	[GetSpellInfo(57819)] = true, -- Argent Champion (1106 - Argent Crusade)
+	[GetSpellInfo(57820)] = true, -- Ebon Champion (1098 - Knights of the Ebon Blade)
+	[GetSpellInfo(57821)] = true, -- Champion of the Kirin Tor (1090 - Kirin Tor)
+	[GetSpellInfo(57822)] = true, -- Wyrmrest Champion (1091 - The Wyrmrest Accord)
+}
+
 local SPELL_BLACKLIST = {[1604] = true} -- Spells not recorded as casted by the npc (Dazed)
 
 local setToAbandon, abandonedName, lootedGUID
@@ -90,7 +107,7 @@ function Recorder:InitializeDB()
 	SigrieDB.race = string.upper(select(2, UnitRace("player")))
 	SigrieDB.guid = SigrieDB.guid or UnitGUID("player")
 	SigrieDB.version = version
-	SigrieDB.build = build
+	SigrieDB.build = SigrieDB.build or build
 	SigrieDB.locale = GetLocale()
 	SigrieDB.addonVersion = self.version
 
@@ -123,7 +140,7 @@ function Recorder:ADDON_LOADED(event, addon)
 	end
 	
 	local version, build = GetBuildInfo() -- Disable on new builds
-	if SigrieDB.build < build then
+	if SigrieDB.build < tonumber(build) then
 		self:Print(L["Due to a new build, MMOC Recorder has been disabled on this character, please submit your data!"])
 		return
 	end
@@ -371,21 +388,10 @@ function Recorder:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, sourc
 	end
 end
 
--- Reputation modifiers
-local reputationModifiers = {
-	[GetSpellInfo(39953)] = true, -- A'dal's Song of Battle
-	[GetSpellInfo(30754)] = true, -- Cenarion Favor
-	[GetSpellInfo(32098)] = true, -- Honor Hold's Favor
-	[GetSpellInfo(24705)] = true, -- Invocation of the Wickerman
-	[GetSpellInfo(39913)] = true, -- Nazgrel's Fervor
-	[GetSpellInfo(61849)] = true, -- The Spirit of Sharing
-	[GetSpellInfo(58440)] = true, -- Pork Red Ribbon (Cause Adys is crazy)
-}
-	
 function Recorder:HasReputationModifier()
 	if( select(2, UnitRace("player")) == "Human" ) then return true end
 	
-	for name in pairs(reputationModifiers) do
+	for name in pairs(REPUTATION_MODIFIERS) do
 		if( UnitBuff("player", name) ) then
 			return true
 		end
