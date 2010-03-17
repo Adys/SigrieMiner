@@ -5,6 +5,7 @@ Recorder.L = {
 	["Alterac Valley"] = "Alterac Valley",
 	["An error happened while the MMOC Recorder was serializing your data, please report the above error. You might have to scroll up to see it all."] = "An error happened while the MMOC Recorder was serializing your data, please report the above error. You might have to scroll up to see it all.",
 	["Are you sure you want to reset ALL data recorded?"] = "Are you sure you want to reset ALL data recorded?",
+	["Due to a new build, MMOC Recorder has been disabled on this character, please submit your data!"] = "Due to a new build, MMOC Recorder has been disabled on this character, please submit your data!",
 	["Eye of the Storm"] = "Eye of the Storm",
 	["Isle of Conquest"] = "Isle of Conquest",
 	["Message: %s"] = "Message: %s",

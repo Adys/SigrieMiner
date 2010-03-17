@@ -78,8 +78,8 @@ function Recorder:InitializeDB()
 	local version, build = GetBuildInfo()
 	build = tonumber(build) or -1
 	
-	-- Invalidate he database if the player guid changed or the build changed
-	if( SigrieDB and ( not SigrieDB.version or not SigrieDB.build or SigrieDB.build < build ) ) then
+	-- Invalidate the database if the player guid changed or the build changed
+	if SigrieDB and (not SigrieDB.version or not SigrieDB.build) then
 		SigrieDB = nil
 		debug(1, "Reset DB")
 	end
@@ -102,7 +102,7 @@ end
 -- GUID changes infrequently enough, I'm not too worried about this
 function Recorder:PLAYER_LOGIN()
 	local guid = UnitGUID("player")
-	if( SigrieDB.guid and SigrieDB.guid ~= guid ) then
+	if SigrieDB.guid and SigrieDB.guid ~= guid then
 		SigrieDB = nil
 		self:InitializeDB()
 		debug(1, "Reset DB, GUID changed.")
@@ -115,11 +115,17 @@ function Recorder:ADDON_LOADED(event, addon)
 	self:UnregisterEvent("ADDON_LOADED")
 	
 	self:InitializeDB()
-	if( SigrieDB.error ) then
+	if SigrieDB.error then
 		DEFAULT_CHAT_FRAME:AddMessage(string.format(L["Message: %s"], SigrieDB.error.msg))
 		DEFAULT_CHAT_FRAME:AddMessage(string.format(L["Trace: %s"], SigrieDB.error.trace))
 		self:Print(L["An error happened while the MMOC Recorder was serializing your data, please report the above error. You might have to scroll up to see it all."])
 		SigrieDB.error = nil
+	end
+	
+	local version, build = GetBuildInfo() -- Disable on new builds
+	if SigrieDB.build < build then
+		self:Print(L["Due to a new build, MMOC Recorder has been disabled on this character, please submit your data!"])
+		return
 	end
 	
 	self.tooltip = CreateFrame("GameTooltip", "RecorderTooltip", UIParent, "GameTooltipTemplate")
