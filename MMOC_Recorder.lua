@@ -13,7 +13,25 @@ local RECORD_TIMER = 0.50 -- Timer between last relevant event and GetTime() to 
 local LOOT_MAX_LATENCY = 400 -- In milliseconds, discard loot recording if latency is superior
 
 local npcToDB = {["npc"] = "npcs", ["item"] = "items", ["object"] = "objects"}
-local NPC_TYPES = {["mailbox"] = 0x01, ["auctioneer"] = 0x02, ["battlemaster"] = 0x04, ["binder"] = 0x08, ["bank"] = 0x10, ["guildbank"] = 0x20, ["canrepair"] = 0x40, ["flightmaster"] = 0x80, ["stable"] = 0x100, ["tabard"] = 0x200, ["vendor"] = 0x400, ["trainer"] = 0x800, ["spiritres"] = 0x1000, ["book"] = 0x2000, ["talentwipe"] = 0x4000, ["arenaorg"] = 0x8000, ["petition"] = 0x10000}
+local NPC_TYPES = {
+	["mailbox"]      = 0x00001, -- Mailbox (eg. Argent Squire)
+	["auctioneer"]   = 0x00002, -- Auctioneer
+	["battlemaster"] = 0x00004, -- Battlemaster (all or specific)
+	["binder"]       = 0x00008, -- Innkeeper
+	["bank"]         = 0x00010, -- Banker
+	["guildbank"]    = 0x00020, -- Guild Bank (I don't think any NPC can do that ...)
+	["canrepair"]    = 0x00040, -- Can repair armor
+	["flightmaster"] = 0x00080, -- Flight Master
+	["stable"]       = 0x00100, -- Stable Master
+	["tabard"]       = 0x00200, -- Tabard Designer
+	["vendor"]       = 0x00400, -- Vendor (We record vendor/trainer anyway for easy lookups)
+	["trainer"]      = 0x00800, -- Skill trainer
+	["spiritres"]    = 0x01000, -- Spirit Healer
+	["book"]         = 0x02000, -- Readable (do we care?)
+	["talentwipe"]   = 0x04000, -- Can reset talents
+	["arenaorg"]     = 0x08000, -- Arena Organizer
+	["petition"]     = 0x10000, -- Guild Master
+}
 local BATTLEFIELD_TYPES = {["av"] = 1, ["wsg"] = 2, ["ab"] = 3, ["nagrand"] = 4, ["bem"] = 5, ["all_arenas"] = 6, ["eots"] = 7, ["rol"] = 8, ["sota"] = 9, ["dalaran"] = 10, ["rov"] = 11, ["ioc"] = 30, ["all_battlegrounds"] = 32}
 local BATTLEFIELD_MAP = {[L["Alterac Valley"]] = "av", [L["Warsong Gulch"]] = "wsg", [L["Eye of the Storm"]] = "eots", [L["Strand of the Ancients"]] = "sota", [L["Isle of Conquest"]] = "ioc", [L["All Arenas"]] = "all_arenas"}
 
