@@ -106,6 +106,8 @@ function Recorder:InitializeDB()
 	SigrieDB.class = select(2, UnitClass("player"))
 	SigrieDB.race = string.upper(select(2, UnitRace("player")))
 	SigrieDB.guid = SigrieDB.guid or UnitGUID("player")
+	SigrieDB.name = UnitName("player")
+	SigrieDB.realm = GetRealmName()
 	SigrieDB.version = version
 	SigrieDB.build = SigrieDB.build or build
 	SigrieDB.locale = GetLocale()
