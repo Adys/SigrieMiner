@@ -3,7 +3,8 @@ Recorder.version = 1
 
 local L = Recorder.L
 local CanMerchantRepair, GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems, GetMerchantItemCostInfo = CanMerchantRepair, GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems, GetMerchantItemCostInfo
-local GetMerchantItemCostItem, GetMerchantItemLink, GetNumFactions, GetNumLootItems, GetNumTrainerServices, GetTrainerGreetingText, LootSlotIsItem, UnitAura, GetTitleText = GetMerchantItemCostItem, GetMerchantItemLink, GetNumFactions, GetNumLootItems, GetNumTrainerServices, GetTrainerGreetingText, LootSlotIsItem, UnitAura, GetTitleText
+local GetMerchantItemCostItem, GetMerchantItemLink, GetNumFactions, GetNumLootItems, GetNumTrainerServices, GetTrainerGreetingText, GetTitleText = GetMerchantItemCostItem, GetMerchantItemLink, GetNumFactions, GetNumLootItems, GetNumTrainerServices, GetTrainerGreetingText, GetTitleText
+local CheckInteractDistance, ItemTextGetCreator, LootSlotIsItem, UnitAura = CheckInteractDistance, ItemTextGetCreator, LootSlotIsItem, UnitAura
 
 local DEBUG_LEVEL = 4
 local ALLOWED_COORD_DIFF = 0.02
@@ -11,6 +12,7 @@ local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
 local RECORD_TIMER = 0.50 -- Timer between last relevant event and GetTime() to acquire a loot source
 local LOOT_MAX_LATENCY = 400 -- In milliseconds, discard loot recording if latency is superior
+local COORD_INTERACT_DISTANCE = 3 -- Record coords at this distance. 1 = inspect, 2 = trade, 3 = duel, 4 = follow
 
 local npcToDB = {["npc"] = "npcs", ["item"] = "items", ["object"] = "objects"}
 local NPC_TYPES = {
@@ -1247,19 +1249,39 @@ function Recorder:QUEST_DETAIL(event)
 	self:QuestProgress()
 end
 
+function Recorder:CheckUnit(unit)
+	-- Check if the unit looks legit (generally used for "npc" unit)
+	if not UnitExists(unit) or UnitIsDead(unit) or UnitIsPlayer(unit) then return false end
+	return true
+end
+
+-- Record data on target change
+function Recorder:PLAYER_TARGET_CHANGED()
+	if UnitExists("target") and not UnitPlayerControlled("target") and not UnitAffectingCombat("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
+		self:RecordCreatureData("generic", "target")
+	end
+end
+
+
 -- General handling
 function Recorder:AUCTION_HOUSE_SHOW()
+	if not self:CheckUnit("npc") then return end
+	
 	self:RecordCreatureData("auctioneer", "npc")
 end
 
 function Recorder:MAIL_SHOW()
+	if UnitIsDead("npc") or UnitIsPlayer("npc") then return end -- UnitExists on an object returns false
+	
 	self:RecordCreatureData("mailbox", "npc")
 end
 
 local merchantData
 function Recorder:MERCHANT_SHOW()
+	if not self:CheckUnit("npc") then return end
+	
 	merchantData = self:RecordCreatureData("vendor", "npc")
-	if( merchantData ) then
+	if merchantData then
 		self:UpdateMerchantData(merchantData)
 	end
 end
@@ -1269,21 +1291,27 @@ function Recorder:MERCHANT_UPDATE()
 end
 
 function Recorder:TRAINER_SHOW()
+	if not self:CheckUnit("npc") then return end
+	
 	local npcData = self:RecordCreatureData("trainer", "npc")
-	if( npcData ) then
+	if npcData then
 		self:UpdateTrainerData(npcData)
 	end
 end
 
 function Recorder:PET_STABLE_SHOW()
+	if not self:CheckUnit("npc") then return end
+	
 	self:RecordCreatureData("stable", "npc")
 end
 
 function Recorder:TAXIMAP_OPENED()
+	if not self:CheckUnit("npc") then return end
+	
 	local npcData = self:RecordCreatureData("flightmaster", "npc")
-	if( npcData ) then
+	if npcData then
 		for i=1, NumTaxiNodes() do
-			if( TaxiNodeGetType(i) == "CURRENT" ) then
+			if TaxiNodeGetType(i) == "CURRENT" then
 				npcData.info.taxiNode = TaxiNodeName(i)
 				debug(3, "Set taxi node to %s.", npcData.info.taxiNode)
 				break
@@ -1293,68 +1321,62 @@ function Recorder:TAXIMAP_OPENED()
 end
 
 function Recorder:BANKFRAME_OPENED()
+	if not self:CheckUnit("npc") then return end
+	
 	self:RecordCreatureData("bank", "npc")
 end
 
 function Recorder:CONFIRM_XP_LOSS()
-	local unit = UnitExists("npc") and not UnitIsPlayer("npc") and "npc"
-	local inRange = CheckSpiritHealerDist()
-	if unit and inRange then
-		self:RecordCreatureData("spiritres", "npc")
-		debug(4, "NPC %s can spirit res", UnitName(unit))
-	end
+	if not self:CheckUnit("npc") then return end
+	if not CheckSpiritHealerDist() then return end -- Sanity range check
+	
+	self:RecordCreatureData("spiritres", "npc")
 end
 
 function Recorder:CONFIRM_BINDER()
-	local unit = UnitExists("npc") and not UnitIsPlayer("npc") and "npc" or UnitExists("target") and not UnitIsPlayer("target") and "target"
-	local inRange = CheckBinderDist() -- Sanity check
-	if unit and inRange then
-		self:RecordCreatureData("binder", unit)
-		debug(4, "NPC %s can bind hearthstone", UnitName(unit))
-	end
+	local unit = (self:CheckUnit("npc") and "npc") or (self:CheckUnit("target") and "target")
+	if not unit then return end
+	if not CheckBinderDist() then return end -- Sanity range check
+	
+	self:RecordCreatureData("binder", unit)
 end
 
 function Recorder:CONFIRM_TALENT_WIPE()
-	local unit = UnitExists("npc") and not UnitIsPlayer("npc") and "npc"
-	local inRange = CheckTalentMasterDist() -- Sanity check
-	if unit and inRange then
-		self:RecordCreatureData("talentwipe", "npc")
-		debug(4, "NPC %s can reset talents", UnitName(unit))
-	end
+	if not self:CheckUnit("npc") then return end
+	if not CheckTalentMasterDist() then return end -- Sanity range check
+	
+	self:RecordCreatureData("talentwipe", "npc")
 end
 
 function Recorder:GUILDBANKFRAME_OPENED()
-	if( UnitGUID("npc") ) then
-		self:RecordCreatureData("guildbank", "npc")
-	end
-end
-
-function Recorder:PLAYER_TARGET_CHANGED()
-	if( UnitExists("target") and not UnitPlayerControlled("target") and not UnitAffectingCombat("target") and CheckInteractDistance("target", 3) ) then
-		self:RecordCreatureData("generic", "target")
-	end
+	if not self:CheckUnit("npc") then return end
+	
+	self:RecordCreatureData("guildbank", "npc")
 end
 
 function Recorder:BATTLEFIELDS_SHOW()
-	if( not UnitExists("npc") ) then return end
-
+	if not self:CheckUnit("npc") then return end -- Despite appearances, it's still an interaction
+	debug(4, "Unit %s is a battlemaster: %s", UnitName("npc"), BATTLEFIELD_MAP[GetBattlefieldInfo()])
 	local type = BATTLEFIELD_TYPES[BATTLEFIELD_MAP[GetBattlefieldInfo()] or ""]
-	if( type ) then
-		local npcData = self:RecordCreatureData("battlemaster", "target")
+	if type then
+		local npcData = self:RecordCreatureData("battlemaster", "npc")
 		npcData.info.battlefields = type
 	end
 end
 
 function Recorder:PETITION_VENDOR_SHOW()
-	if( UnitExists("npc") ) then
-		self:RecordCreatureData("arenaorg", "npc")
-	end
+	if not self:CheckUnit("npc") then return end
+	
+	self:RecordCreatureData("arenaorg", "npc")
 end
+
 -- Record book locations
 function Recorder:ITEM_TEXT_BEGIN()
-	-- ItemTextGetCreator() is true if the item is from an user, such as mail letters
+	if not self:CheckUnit("npc") then return end
+	if ItemTextGetCreator() then return end -- true if the item is from an user, such as mail letters
+	
 	local guid = UnitGUID("npc")
-	if( not ItemTextGetCreator() and self.GUID_TYPE[guid] ) then
+	if self.GUID_TYPE[guid] then
 		self:RecordDataLocation("objects", self.GUID_ID[guid])
 	end
 end
@@ -1366,7 +1388,7 @@ local function checkGossip(...)
 	
 	for i=1, select("#", ...), 2 do
 		local text, type = select(i, ...)
-		if( NPC_TYPES[type] ) then
+		if NPC_TYPES[type] then
 			Recorder:RecordCreatureType(npcData, type)
 		end
 	end
@@ -1374,17 +1396,17 @@ end
 
 function Recorder:GOSSIP_SHOW()
 	-- Have more than one gossip
-	if( GetNumGossipAvailableQuests() > 0 or GetNumGossipActiveQuests() > 0 or GetNumGossipOptions() >= 2 ) then 
+	if GetNumGossipAvailableQuests() > 0 or GetNumGossipActiveQuests() > 0 or GetNumGossipOptions() >= 2 then 
 		checkGossip(GetGossipOptions())
 	-- No gossip, just grab the location
-	elseif( GetNumGossipAvailableQuests() == 0 and GetNumGossipActiveQuests() == 0 and GetNumGossipOptions() == 0 ) then
+	elseif GetNumGossipAvailableQuests() == 0 and GetNumGossipActiveQuests() == 0 and GetNumGossipOptions() == 0 then
 		self:RecordCreatureData(nil, "npc")
 	end
 end
 
 -- Cache difficulty so we can't always rechecking it
 function Recorder:UpdateDifficulty()
-	if( not IsInInstance() ) then
+	if not IsInInstance() then
 		ZONE_DIFFICULTY = "world"
 		debug(2, "Player is not in a zone, set key to world")
 		return
@@ -1393,10 +1415,10 @@ function Recorder:UpdateDifficulty()
 	local instanceType, difficulty, _, maxPlayers, playerDifficulty, isDynamicInstance = select(2, GetInstanceInfo())
 	local dungeonType = "normal"
 	if( instanceType == "raid" ) then
-		if( ( isDynamicInstance and playerDifficulty == 1 ) or ( not isDynamicInstance and difficulty > 2 ) ) then
+		if (isDynamicInstance and playerDifficulty == 1) or (not isDynamicInstance and difficulty > 2) then
 			dungeonType = "heroic"
 		end
-	elseif( difficulty >= 2 ) then
+	elseif difficulty >= 2 then
 		dungeonType = "heroic"
 	end
 
@@ -1413,22 +1435,22 @@ Recorder.ZONE_CHANGED_NEW_AREA = Recorder.UpdateDifficulty
 local function writeTable(tbl)
 	local data = ""
 	for key, value in pairs(tbl) do
-		if( key ~= "START_SERIALIZER" ) then
+		if key ~= "START_SERIALIZER" then
 			local valueType = type(value)
-
+			
 			-- Wrap the key in brackets if it's a number
-			if( type(key) == "number" ) then
+			if type(key) == "number" then
 				key = string.format("[%s]", key)
 				-- This will match any punctuation, spacing or control characters, basically anything that requires wrapping around them
-			elseif( string.match(key, "[%p%s%c%d]") ) then
+			elseif string.match(key, "[%p%s%c%d]") then
 				key = string.format("[\"%s\"]", key)
 			end
-
+			
 			-- foo = {bar = 5}
-			if( valueType == "table" ) then
+			if valueType == "table" then
 				data = string.format("%s%s=%s;", data, key, writeTable(value))
 				-- foo = true / foo = 5
-			elseif( valueType == "number" or valueType == "boolean" ) then
+			elseif valueType == "number" or valueType == "boolean" then
 				data = string.format("%s%s=%s;", data, key, tostring(value))
 				-- foo = "bar"
 			else
@@ -1436,7 +1458,7 @@ local function writeTable(tbl)
 			end
 		end
 	end
-
+	
 	return "{" .. data .. "}"
 end
 
