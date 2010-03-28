@@ -1139,11 +1139,6 @@ function Recorder:QUEST_LOG_UPDATE(event)
 			foundQuests = foundQuests + 1
 			
 			tempQuestLog[questID] = true
-			
-			-- If the quest log has it, then will be able to get the GUID for it
-			if( questByName.name == questName ) then
-				table.wipe(questByName)
-			end
 		end
 		
 		index = index + 1
@@ -1204,32 +1199,14 @@ function Recorder:QUEST_LOG_UPDATE(event)
 	table.wipe(tempQuestLog)
 end
 
--- Because we can't save by ID for these, but we don't want to store all by name, the data will get queued
--- so we can make sure it's not going to popup in the quest log
-function Recorder:SaveQueuedQuest()
-	if( questByName.name ) then
-		debug(3, "Found quest %s that does not enter log, starts/ends at %d", questByName.name, questByName.id)
-
-		local questData = self:GetBasicData("quests", questByName.name)
-		questData.startsID = questByName.id
-		questData.endsID = questByName.id
-		questByName.name = nil
-	end
-end
-
 function Recorder:QuestProgress()
 	local guid = UnitGUID("npc")
 	local id, type = self.GUID_ID[guid], self.GUID_TYPE[guid]
 	
 	-- Don't need to record start location of items
-	if( type ~= "item" ) then
+	if type ~= "item" then
 		questGiverID, questGiverType = id, type
 		self:RecordCreatureData(nil, "npc")
-		self:SaveQueuedQuest()
-		
-		-- Store it by name temporarily as the NPC starting and ending it
-		questByName.name = GetTitleText()
-		questByName.id = questGiverID * (questGiverType == "npc" and 1 or -1)
 	end
 end
 
