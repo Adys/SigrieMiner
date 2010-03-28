@@ -1234,6 +1234,12 @@ end
 -- Record data on target change
 function Recorder:PLAYER_TARGET_CHANGED()
 	if UnitExists("target") and not UnitPlayerControlled("target") and not UnitAffectingCombat("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
+		for i=1, UnitVehicleSeatCount("target") do
+			if select(2, UnitVehicleSeatInfo("target", i)) then
+				debug(4, "Skipped target record on %s (vehicle has non-empty seats)", UnitName("target"))
+				return
+			end
+		end
 		self:RecordCreatureData("generic", "target")
 	end
 end
