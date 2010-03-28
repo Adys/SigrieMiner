@@ -289,7 +289,6 @@ local npcTypeMetatable = {
 }
 
 function Recorder:PLAYER_LEAVING_WORLD()
-	self:SaveQueuedQuest()
 	self.GUID_ID = setmetatable({}, npcIDMetatable)
 	self.GUID_TYPE = setmetatable({}, npcTypeMetatable)
 end
@@ -1356,11 +1355,13 @@ end
 
 function Recorder:BATTLEFIELDS_SHOW()
 	if not self:CheckUnit("npc") then return end -- Despite appearances, it's still an interaction
-	debug(4, "Unit %s is a battlemaster: %s", UnitName("npc"), BATTLEFIELD_MAP[GetBattlefieldInfo()])
 	local type = BATTLEFIELD_TYPES[BATTLEFIELD_MAP[GetBattlefieldInfo()] or ""]
 	if type then
+		debug(4, "Unit %s is a battlemaster: %s", UnitName("npc"), type)
 		local npcData = self:RecordCreatureData("battlemaster", "npc")
 		npcData.info.battlefields = type
+	else
+		debug(3, "Unknown battlemaster type:", GetBattlefieldInfo())
 	end
 end
 
