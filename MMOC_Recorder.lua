@@ -41,7 +41,7 @@ local BATTLEFIELD_MAP = {[L["Alterac Valley"]] = "av", [L["Warsong Gulch"]] = "w
 -- Note: Disenchant loots exist (AQ) but should be manually added to the DB
 -- Attempting to loot an item between END_ROLL and CHECK_INVENTORY causes it
 -- to be disenchanted on-spot if it was won by a disenchanting roll.
-local IGNORE_LOOT = {
+local DISENCHANT_LOOT = {
 	[10938] = true, -- Lesser Magic Essence
 	[10939] = true, -- Greater Magic Essence
 	[10940] = true, -- Strange Dust
@@ -888,6 +888,16 @@ function Recorder:FindByLock()
 	end
 end
 
+function Recorder:isDisenchantBug(itemID)
+	-- During a disenchant roll, the item is transformed into its own
+	-- disenchant loot after the end of the roll, before it goes into
+	-- the winner's bag. Here, we ensure this doesn't get recorded.
+	if GetNumPartyMembers() == 0 or GetNumRaidMembers() == 0 then return end -- Are we in a party/raid?
+	if GetLootMethod() == "freeforall" then return end -- Is rolling enabled?
+	if not DISENCHANT_LOOT[itemID] then return end -- Is the item a disenchant product?
+	debug(3, "Item %i is a disenchant product. FAIL, Blizzard, FAIL!", itemID)
+end
+
 function Recorder:LOOT_CLOSED()
 	self.activeSpell.object = nil
 	table.wipe(locksAllowed)
@@ -981,8 +991,6 @@ function Recorder:LOOT_OPENED()
 	if( not npcData ) then return end
 	npcData.looted = (npcData.looted or 0) + 1
 	
-	local inGroup = GetNumPartyMembers() > 0 or GetNumRaidMembers() > 0
-	
 	for i=1, GetNumLootItems() do
 		-- Parse out coin
 		if( LootSlotIsCoin(i) ) then
@@ -995,10 +1003,10 @@ function Recorder:LOOT_OPENED()
 			
 			debug(2, "Found %d copper", npcData.coin[#(npcData.coin)])
 		-- Record item data
-		elseif( LootSlotIsItem(i) ) then
+		elseif LootSlotIsItem(i) then
 			local link = GetLootSlotLink(i)
 			local itemID = link and tonumber(string.match(link, "item:(%d+)"))
-			if( itemID and ( not isMob or ( not inGroup or GetLootMethod() == "freeforall" or not IGNORE_LOOT[itemID] ) ) ) then
+			if itemID and (not isMob or not self:isDisenchantBug(itemID)) then
 				local quantity = select(3, GetLootSlotInfo(i))
 				
 				-- If we have an NPC ID then associate the npc with dropping that item
@@ -1010,9 +1018,13 @@ function Recorder:LOOT_OPENED()
 				
 				local lootType = activeObject and activeObject.lootType or ""
 				debug(2, "Looted item %s from them %d out of %d times (%s)", GetItemInfo(itemID), npcData.loot[itemID].looted, npcData.looted, lootType)
+			else
+				debug(4, "Loot slot %i makes no sense", i)
 			end
 		end
 	end
+	
+-- 	debug(4, "Discarding loot, source is unknown")
 end
 
 -- Record items being opened
