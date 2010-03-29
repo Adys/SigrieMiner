@@ -919,7 +919,7 @@ function Recorder:LOOT_OPENED()
 				return
 			end
 			-- Throttle it by the items unique id, default to the last known link if finding by lock failed
-			local itemID, uniqueID = string.match(self.activeSpell.useLock and self:FindByLock() or self.activeSpell.item, "item:(%d+):%d+:%d+:%d+:%d+:%d+:%d+:(%d+)")
+			local itemID, uniqueID = string.match(self.activeSpell.useLock and self:FindByLock() or self.activeSpell.item, "item:(%d+):%d+:%d+:%d+:%d+:%d+:%d+:(-?%d+)")
 			itemID = tonumber(itemID)
 			uniqueID = tonumber(uniqueID)
 			
@@ -927,8 +927,11 @@ function Recorder:LOOT_OPENED()
 			if( not itemID ) then return end
 			
 			-- We're throttling it by the items unique id, this only applies to things that don't force auto loot, like Champion's Bags
-			if( activeObject.throttleByItem and uniqueID and uniqueID > 0 ) then
-				if( lootedGUID[uniqueID] ) then return end
+			if activeObject.throttleByItem and uniqueID then
+				if lootedGUID[uniqueID] then
+					debug(4, "Discarding loot, %i already a looted GUID", uniqueID)
+					return
+				end
 				lootedGUID[uniqueID] = time + LOOT_EXPIRATION
 			end
 			
@@ -979,7 +982,7 @@ function Recorder:LOOT_OPENED()
 	npcData.looted = (npcData.looted or 0) + 1
 	
 	local inGroup = GetNumPartyMembers() > 0 or GetNumRaidMembers() > 0
-		
+	
 	for i=1, GetNumLootItems() do
 		-- Parse out coin
 		if( LootSlotIsCoin(i) ) then
