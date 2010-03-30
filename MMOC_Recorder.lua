@@ -2,9 +2,13 @@ local Recorder = select(2, ...)
 Recorder.version = 1
 
 local L = Recorder.L
-local CanMerchantRepair, GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems, GetMerchantItemCostInfo = CanMerchantRepair, GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems, GetMerchantItemCostInfo
-local GetMerchantItemCostItem, GetMerchantItemLink, GetNumFactions, GetNumLootItems, GetNumTrainerServices, GetTrainerGreetingText, GetTitleText = GetMerchantItemCostItem, GetMerchantItemLink, GetNumFactions, GetNumLootItems, GetNumTrainerServices, GetTrainerGreetingText, GetTitleText
-local CheckInteractDistance, ItemTextGetCreator, LootSlotIsItem, UnitAura = CheckInteractDistance, ItemTextGetCreator, LootSlotIsItem, UnitAura
+
+local CanMerchantRepair, IsInInstance, ItemTextGetCreator, LootSlotIsItem, UnitAura = CanMerchantRepair, IsInInstance, ItemTextGetCreator, LootSlotIsItem, UnitAura
+local GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems = GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems
+local GetMerchantItemCostInfo, GetMerchantItemCostItem, GetMerchantItemLink = GetMerchantItemCostInfo, GetMerchantItemCostItem, GetMerchantItemLink
+local GetNumFactions, GetNumLootItems, GetNumTrainerServices = GetNumFactions, GetNumLootItems, GetNumTrainerServices
+local GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo = GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo
+local CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist = CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist
 
 local DEBUG_LEVEL = 4
 local ALLOWED_COORD_DIFF = 0.02
@@ -34,8 +38,31 @@ local NPC_TYPES = {
 	["arenaorg"]     = 0x08000, -- Arena Organizer
 	["petition"]     = 0x10000, -- Guild Master
 }
-local BATTLEFIELD_TYPES = {["av"] = 1, ["wsg"] = 2, ["ab"] = 3, ["nagrand"] = 4, ["bem"] = 5, ["all_arenas"] = 6, ["eots"] = 7, ["rol"] = 8, ["sota"] = 9, ["dalaran"] = 10, ["rov"] = 11, ["ioc"] = 30, ["all_battlegrounds"] = 32}
-local BATTLEFIELD_MAP = {[L["Alterac Valley"]] = "av", [L["Warsong Gulch"]] = "wsg", [L["Eye of the Storm"]] = "eots", [L["Strand of the Ancients"]] = "sota", [L["Isle of Conquest"]] = "ioc", [L["All Arenas"]] = "all_arenas"}
+
+local BATTLEFIELD_TYPES = {
+	["Alterac Valley"]         = 1,
+	["Warsong Gulch"]          = 2,
+	["Arathi Basin"]           = 3,
+	["Nagrand Arena"]          = 4,
+	["Blade's Edge Arena"]     = 5,
+	["All Arenas"]             = 6,
+	["Eye of the Storm"]       = 7,
+	["Ruins of Lordaeron"]     = 8,
+	["Strand of the Ancients"] = 9,
+	["Dalaran Arena"]          = 10,
+	["Ring of Valor"]          = 11,
+	["Isle of Conquest"]       = 30,
+	["All Battlegrounds"]      = 32;
+}
+local BATTLEFIELD_MAP = { -- Localize the battleground name
+	[L["Alterac Valley"]]         = "Alterac Valley",
+	[L["Arathi Basin"]]           = "Arathi Basin",
+	[L["Warsong Gulch"]]          = "Warsong Gulch",
+	[L["Eye of the Storm"]]       = "Eye of the Storm",
+	[L["Strand of the Ancients"]] = "Strand of the Ancients",
+	[L["Isle of Conquest"]]       = "Isle of Conquest",
+	[L["All Arenas"]]             = "All Arenas"
+}
 
 -- Items to ignore when looted in a *regular* way
 -- Note: Disenchant loots exist (AQ) but should be manually added to the DB
@@ -104,7 +131,7 @@ local setToAbandon, abandonedName, lootedGUID
 local repGain, lootedGUID = {}, {}
 local playerName = UnitName("player")
 
-if( DEBUG_LEVEL > 0 ) then MMOCRecorder = Recorder end
+if DEBUG_LEVEL > 0 then MMOCRecorder = Recorder end
 local function debug(level, msg, ...)
 	if level <= DEBUG_LEVEL then
 		print(string.format(msg, ...))
@@ -223,12 +250,12 @@ end
 -- The downside is, it creates duplicate parent and child tables, but it saves a lot more on not loading the excess data
 function Recorder:GetBasicData(parent, key)
 	self.db[parent] = self.db[parent] or {}
-	if( self.db[parent][key] ) then return self.db[parent][key] end
+	if self.db[parent][key] then return self.db[parent][key] end
 	
 	-- Load it out of the database, we've already got it
-	if( SigrieDB[parent] and SigrieDB[parent][key] ) then
+	if SigrieDB[parent] and SigrieDB[parent][key] then
 		local func, msg = loadstring("return " .. SigrieDB[parent][key])
-		if( func ) then
+		if func then
 			self.db[parent][key] = func()
 		else
 			geterrorhandler(msg)
@@ -244,12 +271,12 @@ end
 function Recorder:GetData(parent, child, key)
 	self.db[parent] = self.db[parent] or {}
 	self.db[parent][child] = self.db[parent][child] or {}
-	if( self.db[parent][child][key] ) then return self.db[parent][child][key] end
+	if self.db[parent][child][key] then return self.db[parent][child][key] end
 	
 	-- Load it out of the database, we've already got it
-	if( SigrieDB[parent] and SigrieDB[parent][child] and SigrieDB[parent][child][key] ) then
+	if SigrieDB[parent] and SigrieDB[parent][child] and SigrieDB[parent][child][key] then
 		local func, msg = loadstring("return " .. SigrieDB[parent][child][key])
-		if( func ) then
+		if func then
 			self.db[parent][child][key] = func()
 		else
 			geterrorhandler(msg)
@@ -269,17 +296,17 @@ local npcIDMetatable = {
 		rawset(tbl, guid, id)
 		return id
 	end
-
 }
+
 local npcTypeMetatable = {
 	__index = function(tbl, guid)
 		local type = tonumber(string.sub(guid, 3, 5), 16)
 		local npcType = false
-		if( type == 3857 ) then
+		if type == 3857 then
 			npcType = "object"
-		elseif( type == 1024 ) then
+		elseif type == 1024 then
 			npcType = "item"
-		elseif( bit.band(type, 0x00f) == 3 or bit.band(type, 0x00f) == 5 ) then
+		elseif bit.band(type, 0x00f) == 3 or bit.band(type, 0x00f) == 5 then
 			npcType = "npc"
 		end
 		
@@ -1463,22 +1490,22 @@ end
 
 local function serializeDatabase(tbl, db, parent)
 	for key, value in pairs(tbl) do
-		if( type(value) == "table" ) then
+		if type(value) == "table" then
 			-- Find the serializer marker, so we know to just turn it into a string and don't go in farther
-			if( value.START_SERIALIZER ) then
+			if value.START_SERIALIZER then
 				db[key] = writeTable(value)
 			-- Still no serialize marker, so just keep building the structure
 			else
 				db[key] = db[key] or {}
 				serializeDatabase(value, db[key], parent or key)
-			end   
+			end
 		end
 	end
 end
 
 -- Because serializing happens during logout, will save the error so users can report them still, without having BugGrabber
 local function serializeError(msg)
-	if( not SigrieDB.error ) then
+	if not SigrieDB.error then
 		SigrieDB.error = {msg = msg, trace = debugstack(2)}
 	end
 end
@@ -1514,8 +1541,8 @@ SLASH_MMOCRECORDER2 = "/mmochampion"
 SlashCmdList["MMOCRECORDER"] = function(msg)
 	msg = string.lower(msg or "")
 	
-	if( msg == "reset" ) then
-		if( not StaticPopupDialogs["MMOCRECORD_CONFIRM_RESET"] ) then
+	if msg == "reset" then
+		if not StaticPopupDialogs["MMOCRECORD_CONFIRM_RESET"] then
 			StaticPopupDialogs["MMOCRECORD_CONFIRM_RESET"] = {
 				text = L["Are you sure you want to reset ALL data recorded?"],
 				button1 = L["Yes"],

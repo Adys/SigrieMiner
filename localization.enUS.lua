@@ -3,6 +3,7 @@ Recorder.L = {
 	["/mmoc reset - Resets all saved data for this character"] = "/mmoc reset - Resets all saved data for this character",
 	["All Arenas"] = "All Arenas",
 	["Alterac Valley"] = "Alterac Valley",
+	["Arathi Basin"] = "Arathi Basin",
 	["An error happened while the MMOC Recorder was serializing your data, please report the above error. You might have to scroll up to see it all."] = "An error happened while the MMOC Recorder was serializing your data, please report the above error. You might have to scroll up to see it all.",
 	["Are you sure you want to reset ALL data recorded?"] = "Are you sure you want to reset ALL data recorded?",
 	["Due to a new build, MMOC Recorder has been disabled on this character, please submit your data!"] = "Due to a new build, MMOC Recorder has been disabled on this character, please submit your data!",
