@@ -654,6 +654,11 @@ function Recorder:RecordCreatureData(type, unit)
 
 	local hasAura = UnitAura(unit, 1, "HARMFUL") or UnitAura(unit, 1, "HELPFUL")
 	local level = UnitLevel(unit)
+	local classification = UnitClassification(unit)
+	if level == -1 and classification ~= "worldboss" then
+		debug(4, "Discarding data: unit level too high")
+		return
+	end
 	
 	npcData.info = npcData.info or {}
 	npcData.info.name = UnitName(unit)
