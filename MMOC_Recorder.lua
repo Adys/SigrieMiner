@@ -992,8 +992,8 @@ function Recorder:LOOT_OPENED()
 			npcData = npcData[activeObject.lootType]
 		end
 
-	-- If the target exists, is dead, not a player, and it's an actual NPC then we will say we're looting that NPC
-	elseif( UnitExists("target") and UnitIsDead("target") and not UnitIsPlayer("target") ) then
+	-- If the target exists, is dead, not a player, and it's an actual tapped NPC then we will say we're looting that NPC
+	elseif UnitExists("target") and UnitIsDead("target") and UnitIsTapped("target") then
 		local guid = UnitGUID("target")
 		if( not guid or lootedGUID[guid] ) then return end
 		
