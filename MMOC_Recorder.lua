@@ -1206,15 +1206,16 @@ function Recorder:QUEST_LOG_UPDATE(event)
 				
 				for i=1, foundQuests do
 					local logID = GetQuestIndexForTimer(i)
-					if( logID and select(9, GetQuestLogTitle(logID)) == questID ) then
+					if logID and select(9, GetQuestLogTitle(logID)) == questID then
 						timer = select(i, GetQuestTimers())
 						timer = math.ceil(timer / 10) * 10
+						debug(4, "Found quest %i timer %i (%i orig)", questID, timer, select(i, GetQuestTimers()))
 						
 						questData.timer = questData.timer and math.max(questData.timer, timer) or timer
 					end
 				end
 				
-				debug(2, "Quest #%d starts at %s #%d, timer? %i seconds.", questID, questGiverType or "nil", questGiverID or -1, questData.timer or 0)
+				debug(2, "Quest #%d starts at %s #%d", questID, questGiverType or "nil", questGiverID or -1)
 				self:RecordQuestPOI(questID)
 			end
 		end
