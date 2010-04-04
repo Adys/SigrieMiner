@@ -1385,7 +1385,7 @@ function Recorder:BATTLEFIELDS_SHOW()
 	if not self:CheckUnit("npc") then return end -- Despite appearances, it's still an interaction
 	local type = BATTLEFIELD_TYPES[BATTLEFIELD_MAP[GetBattlefieldInfo()] or ""]
 	if type then
-		debug(4, "Unit %s is a battlemaster: %s", UnitName("npc"), type)
+		debug(4, "Unit %s is a battlemaster: %s (%i)", UnitName("npc"), GetBattlefieldInfo(), type)
 		local npcData = self:RecordCreatureData("battlemaster", "npc")
 		npcData.info.battlefields = type
 	else
