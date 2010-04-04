@@ -1378,8 +1378,6 @@ function Recorder:CONFIRM_TALENT_WIPE()
 end
 
 function Recorder:GUILDBANKFRAME_OPENED()
-	if not self:CheckUnit("npc") then return end
-	
 	self:RecordCreatureData("guildbank", "npc")
 end
 
@@ -1403,7 +1401,6 @@ end
 
 -- Record book locations
 function Recorder:ITEM_TEXT_BEGIN()
-	if not self:CheckUnit("npc") then return end
 	if ItemTextGetCreator() then return end -- true if the item is from an user, such as mail letters
 	
 	local guid = UnitGUID("npc")
