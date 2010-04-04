@@ -302,7 +302,7 @@ local npcTypeMetatable = {
 	__index = function(tbl, guid)
 		local type = tonumber(string.sub(guid, 3, 5), 16)
 		local npcType = false
-		if type == 3857 then
+		if type == 3857 or type == 3921 then
 			npcType = "object"
 		elseif type == 1024 then
 			npcType = "item"
