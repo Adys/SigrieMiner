@@ -494,7 +494,7 @@ Recorder.InteractSpells = {
 	-- Fishing
 	[GetSpellInfo(13615) or ""] = {item = true, lootByZone = true, lootType = "fishing"},
 	-- Pick Pocket
-	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
+--	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
 	-- Used when opening an item, such as Champion's Purse
 	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true},
 	-- Pick Lock
