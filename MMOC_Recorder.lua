@@ -1273,9 +1273,23 @@ function Recorder:QUEST_DETAIL(event)
 	self:QuestProgress()
 end
 
+function Recorder:QUEST_PROGRESS()
+	if not CheckUnit("npc") then return end
+end
+
 function Recorder:CheckUnit(unit)
 	-- Check if the unit looks legit (generally used for "npc" unit)
 	if not UnitExists(unit) or UnitIsDead(unit) or UnitIsPlayer(unit) then return false end
+	return true
+end
+
+function Recorder:VehicleSeatIsPlayer(unit, seat)
+	-- Heuristics to check if a vehicle seat is occupied by a player
+	-- return nil if the seat is empty
+	local type, name, realm = UnitVehicleSeatInfo(unit, seat)
+	if not name then return end
+	if realm then return true end
+	if name:match("[%s'\"-]") then return false end -- Name contains illegal characters
 	return true
 end
 
@@ -1283,7 +1297,7 @@ end
 function Recorder:PLAYER_TARGET_CHANGED()
 	if UnitExists("target") and not UnitPlayerControlled("target") and not UnitAffectingCombat("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
 		for i=1, UnitVehicleSeatCount("target") do
-			if select(2, UnitVehicleSeatInfo("target", i)) then
+			if self:VehicleSeatIsPlayer("target", i) then
 				debug(4, "Skipped target record on %s (vehicle has non-empty seats)", UnitName("target"))
 				return
 			end
@@ -1425,10 +1439,10 @@ end
 
 function Recorder:GOSSIP_SHOW()
 	-- Have more than one gossip
-	if GetNumGossipAvailableQuests() > 0 or GetNumGossipActiveQuests() > 0 or GetNumGossipOptions() >= 2 then 
+	if GetNumGossipAvailableQuests() > 0 or GetNumGossipActiveQuests() > 0 or GetNumGossipOptions() >= 2 then
 		checkGossip(GetGossipOptions())
 	-- No gossip, just grab the location
-	elseif GetNumGossipAvailableQuests() == 0 and GetNumGossipActiveQuests() == 0 and GetNumGossipOptions() == 0 then
+	elseif GetNumGossipAvailableQuests() == 0 and GetNumGossipActiveQuests() == 0 then
 		self:RecordCreatureData(nil, "npc")
 	end
 end
