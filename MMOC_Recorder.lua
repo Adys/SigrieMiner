@@ -376,8 +376,8 @@ function Recorder:UpdateFactions()
 	local lastFaction
 	for i=1, 1000 do
 		local name, _, standing, _, _, _, _, _, header = GetFactionInfo(i)
-		if( not name or lastFaction == name ) then break end
-		if( name and not header ) then
+		if not name or lastFaction == name then break end
+		if name and not header then
 			self.factions[name] = standing
 		end
 		
@@ -386,7 +386,7 @@ function Recorder:UpdateFactions()
 end
 
 function Recorder:GetFaction(guid)
-	if( not guid ) then return 1 end
+	if not guid then return 1 end
 	self:UpdateFactions()
 	
 	local faction
@@ -394,7 +394,7 @@ function Recorder:GetFaction(guid)
 	self.tooltip:SetHyperlink(string.format("unit:%s", guid))
 	for i=1, self.tooltip:NumLines() do
 		local text = _G["RecorderTooltipTextLeft" .. i]:GetText()
-		if( text and self.factions[text] ) then
+		if text and self.factions[text] then
 			return text
 		end
 	end
@@ -404,7 +404,7 @@ end
 
 function Recorder:GetFactionDiscount(guid)
 	local faction = self:GetFaction(guid)
-	if( not faction ) then return 1 end
+	if not faction then return 1 end
 	return self.factions[faction] == 5 and 0.95 or self.factions[faction] == 6 and 0.90 or self.factions[faction] == 7 and 0.85 or self.factions[faction] == 8 and 0.80 or 1
 end
 
@@ -663,18 +663,24 @@ function Recorder:RecordCreatureData(type, unit)
 	npcData.info = npcData.info or {}
 	npcData.info.name = UnitName(unit)
 	npcData.info.reaction = UnitReaction("player", unit)
-	npcData.info.faction = self:GetFaction(unit)
+	npcData.info.faction = self:GetFaction(UnitGUID(unit))
 	npcData.info.factionGroup = UnitFactionGroup(unit)
 	npcData.info.pvp = UnitIsPVP(unit)
 	
+	debug(3, "%s: faction %s, factionGroup %s", npcData.info.name, npcData.info.faction or "none", npcData.info.factionGroup or "none")
+	
+	if self.playerIsDrunk then
+		debug(4, "Discarding data: player is drunk")
+		return
+	end
 	-- Store by level for these
-	if( level and not self.playerIsDrunk ) then
+	if level then
 		npcData.info[level] = npcData.info[level] or {}
 		npcData.info[level].maxHealth = hasAura and npcData.info.maxHealth or npcData.info.maxHealth and math.max(npcData.info.maxHealth, UnitHealthMax(unit)) or UnitHealthMax(unit)
 		npcData.info[level].maxPower = hasAura and npcData.info.maxPower or npcData.info.maxPower and math.min(npcData.info.maxPower, UnitPowerMax(unit)) or UnitPowerMax(unit)
 		npcData.info[level].powerType = UnitPowerType(unit)
 		
-		debug(2, "Recording npc data, %s #%s (%s primary, %s guid), %d level, %d health, %d power (%d type)", npcData.info.name, npcID, type or "nil", npcType, level, npcData.info[level].maxHealth or -1, npcData.info[level].maxPower or -1, npcData.info[level].powerType or -1)
+		debug(2, "%s (%s #%d) Level %d: %d health, %d power (%d type)", npcData.info.name, npcType, npcID, level, npcData.info[level].maxHealth or -1, npcData.info[level].maxPower or -1, npcData.info[level].powerType or -1)
 	end
 	
 	if( type and type ~= "generic" ) then
