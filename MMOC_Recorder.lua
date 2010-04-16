@@ -662,7 +662,6 @@ function Recorder:RecordCreatureData(type, unit)
 	
 	npcData.info = npcData.info or {}
 	npcData.info.name = UnitName(unit)
-	npcData.info.reaction = UnitReaction("player", unit)
 	npcData.info.faction = self:GetFaction(UnitGUID(unit))
 	npcData.info.factionGroup = UnitFactionGroup(unit)
 	npcData.info.pvp = UnitIsPVP(unit)
