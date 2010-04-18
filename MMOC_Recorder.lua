@@ -338,6 +338,9 @@ function Recorder:CHAT_MSG_SYSTEM(event, message)
 	end
 end
 
+-- For :GetFaction. Do we also need TOOLTIP_UNIT_LEVEL_TYPE?
+local TOOLTIP_UNIT_LEVEL = "^" .. parseText(TOOLTIP_UNIT_LEVEL)
+
 -- Rating identification
 local ITEM_REQ_ARENA_RATING = "^" .. parseText(ITEM_REQ_ARENA_RATING)
 local ITEM_REQ_ARENA_RATING_3V3 = "^" .. parseText(ITEM_REQ_ARENA_RATING_3V3)
@@ -389,13 +392,22 @@ function Recorder:GetFaction(guid)
 	if not guid then return 1 end
 	self:UpdateFactions()
 	
-	local faction
+	local faction, belowLevel
 	self.tooltip:SetOwner(UIParent, "ANCHOR_NONE")
 	self.tooltip:SetHyperlink(string.format("unit:%s", guid))
 	for i=1, self.tooltip:NumLines() do
 		local text = _G["RecorderTooltipTextLeft" .. i]:GetText()
-		if text and self.factions[text] then
-			return text
+		if text then
+			-- Let's not confuse NPC title and faction! Faction is always just under the level
+			if not belowLevel and text:lower():match(TOOLTIP_UNIT_LEVEL) then
+				belowLevel = true
+			elseif belowLevel then
+				if self.factions[text] then
+					return text
+				else
+					break
+				end
+			end
 		end
 	end
 	
