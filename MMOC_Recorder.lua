@@ -3,8 +3,8 @@ Recorder.version = 1
 
 local L = Recorder.L
 
-local CanMerchantRepair, IsInInstance, ItemTextGetCreator, LootSlotIsItem, UnitAura = CanMerchantRepair, IsInInstance, ItemTextGetCreator, LootSlotIsItem, UnitAura
-local GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems = GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems
+local CanMerchantRepair, IsInInstance, IsFishingLoot, ItemTextGetCreator, LootSlotIsItem, UnitAura = CanMerchantRepair, IsInInstance, IsFishingLoot, ItemTextGetCreator, LootSlotIsItem, UnitAura
+local GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems, GetLootMethod = GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink, GetInboxNumItems, GetLootMethod
 local GetMerchantItemCostInfo, GetMerchantItemCostItem, GetMerchantItemLink = GetMerchantItemCostInfo, GetMerchantItemCostItem, GetMerchantItemLink
 local GetNumFactions, GetNumLootItems, GetNumTrainerServices = GetNumFactions, GetNumLootItems, GetNumTrainerServices
 local GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo = GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo
@@ -238,7 +238,7 @@ function Recorder:ADDON_LOADED(event, addon)
 	self:RegisterEvent("PETITION_VENDOR_SHOW")
 	self:RegisterEvent("CONFIRM_TALENT_WIPE")
 	
-	if( select(2, UnitClass("player")) == "ROGUE" ) then
+	if select(2, UnitClass("player")) == "ROGUE" then
 		self:RegisterEvent("UI_ERROR_MESSAGE")
 	end
 	
@@ -503,10 +503,8 @@ Recorder.InteractSpells = {
 	[GetSpellInfo(32605) or ""] = {item = true, location = false, parentNPC = true, lootType = "herbing"},
 	-- Engineering
 	[GetSpellInfo(49383) or ""] = {item = true, location = false, parentNPC = true, lootType = "engineering"},
-	-- Fishing
-	[GetSpellInfo(13615) or ""] = {item = true, lootByZone = true, lootType = "fishing"},
 	-- Pick Pocket
---	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
+	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
 	-- Used when opening an item, such as Champion's Purse
 	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true},
 	-- Pick Lock
@@ -890,19 +888,22 @@ function Recorder:FindUnit(name)
 	return UnitName("target") == name and "target" or UnitName("focus") == name and "focus" or UnitName("mouseover") == name and "mouseover"
 end
 
--- Track mobs that can't be pick pocketed
+-- Handle pickpocket errors
 function Recorder:UI_ERROR_MESSAGE(event, message)
-	if message ~= SPELL_FAILED_TARGET_NO_POCKETS then return end
-	
-	if self.activeSpell.object and self.activeSpell.endTime <= (GetTime() + RECORD_TIMER) then
-		local unit = self:FindUnit(self.activeSpell.target)
-		if not unit then return end
-		
-		local npcData = self:GetCreatureDB(unit)
-		npcData.info = npcData.info or {}
-		npcData.info.noPockets = true
-		
-		debug(3, "Mob %s (%s) has no pockets", self.activeSpell.target, unit)
+	if message == ERR_ALREADY_PICKPOCKETED then
+		self.activeSpell.object = nil
+	elseif message == SPELL_FAILED_TARGET_NO_POCKETS then
+		if self.activeSpell.object and self.activeSpell.endTime <= (GetTime() + RECORD_TIMER) then
+			local unit = self:FindUnit(self.activeSpell.target)
+			if not unit then return end
+			
+			local npcData = self:GetCreatureDB(unit)
+			npcData.info = npcData.info or {}
+			npcData.info.noPockets = true
+			
+			debug(3, "Mob %s (%s) has no pockets", self.activeSpell.target, unit)
+			self.activeSpell.object = nil
+		end
 	end
 end
 
@@ -958,6 +959,12 @@ function Recorder:LOOT_OPENED()
 		debug(4, "Discarding loot because of lag")
 		return
 	end
+	
+	if IsFishingLoot() then
+		debug(4, "Discarding fishing loot")
+		return
+	end
+	
 	local npcData, isMob
 	local time = GetTime()
 	local activeObject = self.activeSpell.object
@@ -965,15 +972,12 @@ function Recorder:LOOT_OPENED()
 	if activeObject and self.activeSpell.endTime > 0 and (time - self.activeSpell.endTime) <= RECORD_TIMER then
 		self.activeSpell.endTime = -1
 		
-		-- We want to save it by the zone, this is really just for Fishing.
-		if( activeObject.lootByZone ) then
-			npcData = self:RecordZoneLocation(activeObject.lootType)
 		-- It has a location, meaning it's some sort of object
-		elseif( activeObject.location ) then
+		if activeObject.location then
 			npcData = self:RecordDataLocation("objects", self.activeSpell.target)
 		-- Parent item, Milling, Prospecting, Looting items like Bags, etc
-		elseif( activeObject.parentItem ) then
-			if( activeObject.lootType ) then
+		elseif activeObject.parentItem then
+			if activeObject.lootType then
 				debug(4, "Discarding %s loot", activeObject.lootType)
 				return
 			end
@@ -983,7 +987,7 @@ function Recorder:LOOT_OPENED()
 			uniqueID = tonumber(uniqueID)
 			
 			self.activeSpell.useLock = nil
-			if( not itemID ) then return end
+			if not itemID then return end
 			
 			-- We're throttling it by the items unique id, this only applies to things that don't force auto loot, like Champion's Bags
 			if activeObject.throttleByItem and uniqueID then
@@ -1000,25 +1004,25 @@ function Recorder:LOOT_OPENED()
 			npcData = self:GetBasicData("items", itemID)
 			
 		-- Has a parent NPC, so skinning, engineering, etc
-		elseif( activeObject.parentNPC ) then
+		elseif activeObject.parentNPC then
 			local unit = self:FindUnit(self.activeSpell.target)
-			if( not unit ) then return end
+			if not unit then return end
 			
 			npcData = self:GetCreatureDB(unit)
 			npcData[activeObject.lootType] = npcData[activeObject.lootType] or {}
 			npcData = npcData[activeObject.lootType]
 		end
-
+	
 	-- If the target exists, is dead, not a player, and it's an actual tapped NPC then we will say we're looting that NPC
-	elseif UnitExists("target") and UnitIsDead("target") and UnitIsTapped("target") then
+	elseif UnitExists("target") and UnitIsDead("target") and UnitIsTapped("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
 		local guid = UnitGUID("target")
-		if( not guid or lootedGUID[guid] ) then return end
+		if not guid or lootedGUID[guid] then return end
 		
 		lootedGUID[guid] = time + LOOT_EXPIRATION
-
+		
 		-- Make sure the GUID is /actually an NPC ones
 		local npcID = self.GUID_TYPE[guid] == "npc" and self.GUID_ID[guid]
-		if( npcID ) then
+		if npcID then
 			npcData = self:RecordCreatureData(nil, "target")
 			isMob = true
 			
@@ -1032,17 +1036,17 @@ function Recorder:LOOT_OPENED()
 	
 	-- Clean up the list
 	for guid, expiresOn in pairs(lootedGUID) do
-		if( expiresOn <= time ) then
+		if expiresOn <= time then
 			lootedGUID[guid] = nil
 		end
 	end
 	
-	if( not npcData ) then return end
+	if not npcData then return end
 	npcData.looted = (npcData.looted or 0) + 1
 	
 	for i=1, GetNumLootItems() do
 		-- Parse out coin
-		if( LootSlotIsCoin(i) ) then
+		if LootSlotIsCoin(i) then
 			local currency = select(2, GetLootSlotInfo(i))
 			local gold = (tonumber(string.match(currency, GOLD_AMOUNT)) or 0) * COPPER_PER_GOLD
 			local silver = (tonumber(string.match(currency, SILVER_AMOUNT)) or 0) * COPPER_PER_SILVER
@@ -1078,9 +1082,9 @@ end
 
 -- Record items being opened
 local function itemUsed(link, isExact)
-	if( not Recorder.activeSpell or not link ) then return end
+	if not Recorder.activeSpell or not link then return end
 	
-	if( Recorder.activeSpell.object and Recorder.activeSpell.object.parentItem and not Recorder.activeSpell.useSet ) then
+	if Recorder.activeSpell.object and Recorder.activeSpell.object.parentItem and not Recorder.activeSpell.useSet then
 		locksAllowed[link] = isExact and 2 or 1
 		
 		Recorder.activeSpell.item = link
@@ -1097,20 +1101,20 @@ local function itemUsed(link, isExact)
 end
 
 hooksecurefunc("UseContainerItem", function(bag, slot, target)
-	if( not target ) then
+	if not target then
 		itemUsed(GetContainerItemLink(bag, slot), true)
 	end
 end)
 
 hooksecurefunc("UseItemByName", function(name, target)
-	if( not target ) then
+	if not target then
 		itemUsed(select(2, GetItemInfo(name)))
 	end
 end)
 
 function Recorder:UNIT_SPELLCAST_SENT(event, unit, name, rank, target)
-	if( unit ~= "player" or not self.InteractSpells[name] ) then return end
-
+	if unit ~= "player" or not self.InteractSpells[name] then return end
+	
 	local itemName, link = GameTooltip:GetItem()
 	self.activeSpell.name = name
 	self.activeSpell.rank = rank
@@ -1123,15 +1127,15 @@ function Recorder:UNIT_SPELLCAST_SENT(event, unit, name, rank, target)
 end
 
 function Recorder:UNIT_SPELLCAST_SUCCEEDED(event, unit, name, rank)
-	if( unit ~= "player" ) then return end
+	if unit ~= "player" then return end
 	
-	if( self.activeSpell.endTime == -1 and self.activeSpell.name == self.activeSpell.name and self.activeSpell.rank == rank ) then
+	if self.activeSpell.name == self.activeSpell.name and self.activeSpell.endTime == -1 and self.activeSpell.rank == rank then
 		self.activeSpell.endTime = GetTime()
 	end
 end
 
 function Recorder:UNIT_SPELLCAST_FAILED(event, unit)
-	if( unit ~= "player" ) then return end
+	if unit ~= "player" then return end
 	
 	self.activeSpell.object = nil
 end
