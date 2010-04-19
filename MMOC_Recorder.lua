@@ -891,7 +891,7 @@ end
 -- Handle pickpocket errors
 function Recorder:UI_ERROR_MESSAGE(event, message)
 	if message == ERR_ALREADY_PICKPOCKETED then
-		self.activeSpell.object = nil
+		self:clearActiveSpell()
 	elseif message == SPELL_FAILED_TARGET_NO_POCKETS then
 		if self.activeSpell.object and self.activeSpell.endTime <= (GetTime() + RECORD_TIMER) then
 			local unit = self:FindUnit(self.activeSpell.target)
@@ -902,7 +902,7 @@ function Recorder:UI_ERROR_MESSAGE(event, message)
 			npcData.info.noPockets = true
 			
 			debug(3, "Mob %s (%s) has no pockets", self.activeSpell.target, unit)
-			self.activeSpell.object = nil
+			self:clearActiveSpell()
 		end
 	end
 end
@@ -949,7 +949,7 @@ function Recorder:isDisenchantBug(itemID)
 end
 
 function Recorder:LOOT_CLOSED()
-	self.activeSpell.object = nil
+	self:clearActiveSpell()
 	table.wipe(locksAllowed)
 end
 
@@ -1112,6 +1112,17 @@ hooksecurefunc("UseItemByName", function(name, target)
 	end
 end)
 
+function Recorder:clearActiveSpell()
+	self.activeSpell.name = nil
+	self.activeSpell.rank = nil
+	self.activeSpell.target = nil
+	self.activeSpell.startTime = nil
+	self.activeSpell.endTime = nil
+	self.activeSpell.item = nil
+	self.activeSpell.useSet = nil
+	self.activeSpell.object = nil
+end
+
 function Recorder:UNIT_SPELLCAST_SENT(event, unit, name, rank, target)
 	if unit ~= "player" or not self.InteractSpells[name] then return end
 	
@@ -1136,8 +1147,7 @@ end
 
 function Recorder:UNIT_SPELLCAST_FAILED(event, unit)
 	if unit ~= "player" then return end
-	
-	self.activeSpell.object = nil
+	self:clearActiveSpell()
 end
 
 -- QUEST DATA HANDLER
