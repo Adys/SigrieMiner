@@ -16,7 +16,7 @@ local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
 local RECORD_TIMER = 0.75 -- Timer between last relevant event and GetTime() to acquire a loot source
 local LOOT_MAX_LATENCY = 400 -- In milliseconds, discard loot recording if latency is superior
-local COORD_INTERACT_DISTANCE = 3 -- Record coords at this distance. 1 = inspect, 2 = trade, 3 = duel, 4 = follow
+local COORD_INTERACT_DISTANCE = 2 -- Record coords at this distance. 1 = inspect, 2 = trade, 3 = duel, 4 = follow
 
 local npcToDB = {["npc"] = "npcs", ["item"] = "items", ["object"] = "objects"}
 local NPC_TYPES = {
@@ -598,9 +598,9 @@ function Recorder:RecordDataLocation(npcType, npcID)
 	local npcData = self:GetData(npcType, ZONE_DIFFICULTY, npcID)
 	npcData.coords = npcData.coords or {}
 	
-	if( x == 0 and y == 0 and type(level) == "string" ) then
+	if x == 0 and y == 0 and type(level) == "string" then
 		for i=1, #(npcData.coords), 5 do
-			if( npcData.coords[i] == 0 and npcData.coords[i + 1] == 0 and npcData.coords[i + 2] == zone and npcData.coords[i + 3] == level ) then
+			if npcData.coords[i] == 0 and npcData.coords[i + 1] == 0 and npcData.coords[i + 2] == zone and npcData.coords[i + 3] == level then
 				return npcData
 			end
 		end
@@ -618,9 +618,9 @@ function Recorder:RecordDataLocation(npcType, npcID)
 	-- See if we already have an entry for them
 	for i=1, #(npcData.coords), 5 do
 		local npcX, npcY, npcZone, npcLevel, npcCount = npcData.coords[i], npcData.coords[i + 1], npcData.coords[i + 2], npcData.coords[i + 3], npcData.coords[i + 4]
-		if( npcLevel == level and npcZone == zone ) then
+		if npcLevel == level and npcZone == zone then
 			local xDiff, yDiff = math.abs(npcX - x), math.abs(npcY - y)
-			if( xDiff <= ALLOWED_COORD_DIFF and yDiff <= ALLOWED_COORD_DIFF ) then
+			if xDiff <= ALLOWED_COORD_DIFF and yDiff <= ALLOWED_COORD_DIFF then
 				npcData.coords[i] = tonumber(string.format("%.2f", (npcX + x) / 2))
 				npcData.coords[i + 1] = tonumber(string.format("%.2f", (npcY + y) / 2))
 				npcData.coords[i + 4] = npcCount + 1
@@ -692,11 +692,10 @@ function Recorder:RecordCreatureData(type, unit)
 		debug(2, "%s (%s #%d) Level %d: %d health, %d power (%d type)", npcData.info.name, npcType, npcID, level, npcData.info[level].maxHealth or -1, npcData.info[level].maxPower or -1, npcData.info[level].powerType or -1)
 	end
 	
-	if( type and type ~= "generic" ) then
+	if type and type ~= "generic" then
 		self:RecordCreatureType(npcData, type)
 	end
-
-	self:RecordDataLocation(npcToDB[npcType], npcID)
+	
 	return npcData
 end
 
@@ -1326,14 +1325,20 @@ end
 
 -- Record data on target change
 function Recorder:PLAYER_TARGET_CHANGED()
-	if UnitExists("target") and not UnitPlayerControlled("target") and not UnitAffectingCombat("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
-		for i=1, UnitVehicleSeatCount("target") do
-			if self:VehicleSeatIsPlayer("target", i) then
-				debug(4, "Skipped target record on %s (vehicle has non-empty seats)", UnitName("target"))
-				return
-			end
+	if not UnitExists("target") or UnitPlayerControlled("target") then return end
+	
+	for i=1, UnitVehicleSeatCount("target") do -- Check for players inside a vehicle
+		if self:VehicleSeatIsPlayer("target", i) then
+			debug(4, "Skipped target record on %s (vehicle has non-empty seats)", UnitName("target"))
+			return
 		end
-		self:RecordCreatureData("generic", "target")
+	end
+	
+	self:RecordCreatureData("generic", "target")
+	
+	if not UnitAffectingCombat("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
+		local guid = UnitGUID("target")
+		self:RecordDataLocation("npcs", self.GUID_TYPE[guid])
 	end
 end
 
