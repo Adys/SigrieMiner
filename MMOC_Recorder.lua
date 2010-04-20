@@ -485,8 +485,8 @@ hooksecurefunc("SetAbandonQuest", function()
 end)
 
 Recorder.InteractSpells = {
-	-- Opening
-	[GetSpellInfo(3365) or ""] = {item = true, location = true},
+	[GetSpellInfo(3365) or ""] = {item = true, location = true}, -- Opening
+	[GetSpellInfo(22810) or ""] = {item = true, location = true}, -- Opening - No Text
 	-- Herb Gathering
 	[GetSpellInfo(2366) or ""] = {item = true, location = true},
 	-- Mining
