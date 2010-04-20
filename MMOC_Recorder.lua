@@ -14,7 +14,7 @@ local DEBUG_LEVEL = 4
 local ALLOWED_COORD_DIFF = 0.02
 local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
-local RECORD_TIMER = 0.50 -- Timer between last relevant event and GetTime() to acquire a loot source
+local RECORD_TIMER = 0.75 -- Timer between last relevant event and GetTime() to acquire a loot source
 local LOOT_MAX_LATENCY = 400 -- In milliseconds, discard loot recording if latency is superior
 local COORD_INTERACT_DISTANCE = 3 -- Record coords at this distance. 1 = inspect, 2 = trade, 3 = duel, 4 = follow
 
@@ -954,14 +954,14 @@ function Recorder:LOOT_CLOSED()
 end
 
 function Recorder:LOOT_OPENED()
-	local _, _, latency = GetNetStats()
-	if latency > LOOT_MAX_LATENCY then
-		debug(4, "Discarding loot because of lag")
+	if IsFishingLoot() then
+		debug(4, "Discarding fishing loot")
 		return
 	end
 	
-	if IsFishingLoot() then
-		debug(4, "Discarding fishing loot")
+	local _, _, latency = GetNetStats()
+	if latency > LOOT_MAX_LATENCY then
+		debug(4, "Discarding loot because of lag")
 		return
 	end
 	
