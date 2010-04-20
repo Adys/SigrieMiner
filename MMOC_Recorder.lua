@@ -1210,9 +1210,9 @@ function Recorder:QUEST_LOG_UPDATE(event)
 	local numQuests = select(2, GetNumQuestLogEntries())
 	while( foundQuests <= numQuests ) do
 		local questName, _, _, _, isHeader, _, _, _, questID = GetQuestLogTitle(index)
-		if( not questName ) then break end
+		if not questName then break end
 		
-		if( not isHeader ) then
+		if not isHeader then
 			foundQuests = foundQuests + 1
 			
 			tempQuestLog[questID] = true
@@ -1222,15 +1222,15 @@ function Recorder:QUEST_LOG_UPDATE(event)
 	end
 	
 	-- We don't have any previous data to go off of yet, store what we had
-	if( not questLog ) then
+	if not questLog then
 		questLog = CopyTable(tempQuestLog)
 		return
 	end
 		
 	-- Find quests we accepted
-	if( questGiverID ) then
+	if questGiverID then
 		for questID in pairs(tempQuestLog) do
-			if( not questLog[questID] and questGiverType ) then
+			if not questLog[questID] and questGiverType then
 				local questData = self:GetBasicData("quests", questID)
 				questData.startsID = questGiverID * (questGiverType == "npc" and 1 or -1)
 				
@@ -1253,15 +1253,15 @@ function Recorder:QUEST_LOG_UPDATE(event)
 
 	-- Find quests we abandoned or accepted
 	for questID in pairs(questLog) do
-		if( not tempQuestLog[questID] ) then
-			if( abandonedName and abandonedName == self:GetQuestName(questID) ) then
+		if not tempQuestLog[questID] then
+			if abandonedName and abandonedName == self:GetQuestName(questID) then
 				lastRecordedPOI[questID] = nil
 				questLog[questID] = nil
 				abandonedName = nil
 				
 				debug(2, "Quest #%d abandoned", questID)
 				break
-			elseif( not abandonedName and questGiverID ) then
+			elseif not abandonedName and questGiverID then
 				questLog[questID] = nil
 				lastRecordedPOI[questID] = nil
 				
@@ -1296,9 +1296,6 @@ end
 function Recorder:QUEST_DETAIL(event)
 	-- When a quest is shared with the player, "npc" is actually the "player" unitid
 	if UnitIsPlayer("npc") then return end
-	
-	-- We don't want to record non-accepted quests
-	if not IsQuestCompletable() then return end
 	
 	self:QuestProgress()
 end
