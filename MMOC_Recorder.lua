@@ -625,7 +625,7 @@ function Recorder:RecordDataLocation(npcType, npcID)
 				npcData.coords[i + 1] = tonumber(string.format("%.2f", (npcY + y) / 2))
 				npcData.coords[i + 4] = npcCount + 1
 				
-				debug(3, "Recording npc %s (%s) location at %.2f, %.2f in %s (%d floor), counter %d", npcID, npcType, x, y, zone, level, npcData.coords[i + 4])
+				debug(3, "Recording %s %s location at %.2f, %.2f in %s (%d floor), counter %d", npcType, npcID, x, y, zone, level, npcData.coords[i + 4])
 				return npcData
 			end
 		end
@@ -638,7 +638,7 @@ function Recorder:RecordDataLocation(npcType, npcID)
 	table.insert(npcData.coords, level)
 	table.insert(npcData.coords, 1)
 	
-	debug(3, "Recording npc %s location at %.2f, %.2f in %s (%d floor)", npcID, x, y, zone, level)
+	debug(3, "Recording %s %s location at %.2f, %.2f in %s (%d floor)", npcType, npcID, x, y, zone, level)
 	return npcData
 end
 
@@ -668,7 +668,10 @@ function Recorder:RecordCreatureData(type, unit)
 	if level == -1 and classification ~= "worldboss" then
 		debug(4, "Discarding data: unit level too high")
 		return
+	elseif level == 1 then
+		level = -2 -- Big hack because lua tables suck at json exports
 	end
+	
 	
 	npcData.info = npcData.info or {}
 	npcData.info.name = UnitName(unit)
@@ -1284,7 +1287,7 @@ function Recorder:QuestProgress()
 	-- Don't need to record start location of items
 	if type ~= "item" then
 		questGiverID, questGiverType = id, type
-		self:RecordCreatureData(nil, "npc")
+		self:RecordDataLocation(npcToDB[type], id)
 	end
 end
 
@@ -1452,7 +1455,7 @@ function Recorder:ITEM_TEXT_BEGIN()
 	if ItemTextGetCreator() then return end -- true if the item is from an user, such as mail letters
 	
 	local guid = UnitGUID("npc")
-	if self.GUID_TYPE[guid] then
+	if self.GUID_TYPE[guid] == "object" then
 		self:RecordDataLocation("objects", self.GUID_ID[guid])
 	end
 end
