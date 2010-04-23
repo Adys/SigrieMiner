@@ -127,6 +127,24 @@ local REPUTATION_MODIFIERS = {
 
 local SPELL_BLACKLIST = {[1604] = true} -- Spells not recorded as casted by the npc (Dazed)
 
+Recorder.InteractSpells = {
+	[GetSpellInfo(3365) or ""] = {item = true, location = true}, -- Opening
+	[GetSpellInfo(22810) or ""] = {item = true, location = true}, -- Opening - No Text
+	[GetSpellInfo(2366) or ""] = {item = true, location = true}, -- Herb Gathering
+	[GetSpellInfo(2575) or ""] = {item = true, location = true}, -- Mining
+	[GetSpellInfo(13262) or ""] = {item = true, location = false, parentItem = true, lootType = "disenchanting"}, -- Disenchanting
+	[GetSpellInfo(51005) or ""] = {item = true, location = false, parentItem = true, lootType = "milling"}, -- Milling
+	[GetSpellInfo(31252) or ""] = {item = true, location = false, parentItem = true, lootType = "prospecting"}, -- Prospecting
+	[GetSpellInfo(8613) or ""] = {item = true, location = false, parentNPC = true, lootType = "skinning"}, -- Skinning
+	[GetSpellInfo(32605) or ""] = {item = true, location = false, parentNPC = true, lootType = "herbing"}, -- Herb Gathering
+	[GetSpellInfo(49383) or ""] = {item = true, location = false, parentNPC = true, lootType = "engineering"}, -- Engineering
+	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"}, -- Pick Pocket
+	-- Used when opening an item, such as Champion's Purse
+	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true},
+	-- Pick Lock
+	--[GetSpellInfo(1804) or ""] = {item = true, location = false, parentItem = true},
+}
+
 local setToAbandon, abandonedName, lootedGUID
 local repGain, lootedGUID = {}, {}
 local playerName = UnitName("player")
@@ -483,33 +501,6 @@ end)
 hooksecurefunc("SetAbandonQuest", function()
 	setToAbandon = GetAbandonQuestName()
 end)
-
-Recorder.InteractSpells = {
-	[GetSpellInfo(3365) or ""] = {item = true, location = true}, -- Opening
-	[GetSpellInfo(22810) or ""] = {item = true, location = true}, -- Opening - No Text
-	-- Herb Gathering
-	[GetSpellInfo(2366) or ""] = {item = true, location = true},
-	-- Mining
-	[GetSpellInfo(2575) or ""] = {item = true, location = true},
-	-- Disenchanting
-	[GetSpellInfo(13262) or ""] = {item = true, location = false, parentItem = true, lootType = "disenchanting"},
-	-- Milling
-	[GetSpellInfo(51005) or ""] = {item = true, location = false, parentItem = true, lootType = "milling"},
-	-- Prospecting
-	[GetSpellInfo(31252) or ""] = {item = true, location = false, parentItem = true, lootType = "prospecting"},
-	-- Skinning
-	[GetSpellInfo(8613) or ""] = {item = true, location = false, parentNPC = true, lootType = "skinning"},
-	-- Herb Gathering
-	[GetSpellInfo(32605) or ""] = {item = true, location = false, parentNPC = true, lootType = "herbing"},
-	-- Engineering
-	[GetSpellInfo(49383) or ""] = {item = true, location = false, parentNPC = true, lootType = "engineering"},
-	-- Pick Pocket
-	[GetSpellInfo(921) or ""] = {item = true, location = false, parentNPC = true, lootType = "pickpocket"},
-	-- Used when opening an item, such as Champion's Purse
-	["Bag"] = {item = true, location = false, parentItem = true, throttleByItem = true},
-	-- Pick Lock
-	--[GetSpellInfo(1804) or ""] = {item = true, location = false, parentItem = true},
-}
 
 -- Might have to use DungeonUsesTerrainMap, Blizzard seems to use it for subtracting from dungeon level?
 function Recorder:RecordLocation()
