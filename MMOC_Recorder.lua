@@ -897,7 +897,10 @@ function Recorder:UI_ERROR_MESSAGE(event, message)
 	elseif message == SPELL_FAILED_TARGET_NO_POCKETS then
 		if self.activeSpell.object and self.activeSpell.endTime <= (GetTime() + RECORD_TIMER) then
 			local unit = self:FindUnit(self.activeSpell.target)
-			if not unit then return end
+			if not unit then
+				self:clearActiveSpell()
+				return
+			end
 			
 			local npcData = self:GetCreatureDB(unit)
 			npcData.info = npcData.info or {}
