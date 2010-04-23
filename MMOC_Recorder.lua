@@ -449,10 +449,10 @@ function Recorder:COMBAT_LOG_EVENT_UNFILTERED(event, timestamp, eventType, sourc
 end
 
 function Recorder:HasReputationModifier()
-	if( select(2, UnitRace("player")) == "Human" ) then return true end
+	if select(2, UnitRace("player")) == "Human" then return true end
 	
 	for name in pairs(REPUTATION_MODIFIERS) do
-		if( UnitBuff("player", name) ) then
+		if UnitBuff("player", name) then
 			return true
 		end
 	end
@@ -461,9 +461,9 @@ function Recorder:HasReputationModifier()
 end
 
 function Recorder:COMBAT_TEXT_UPDATE(event, type, faction, amount)
-	if( type ~= "FACTION" ) then return end
+	if type ~= "FACTION" then return end
 	
-	if( repGain.timeout and repGain.timeout >= GetTime() and not self:HasReputationModifier() ) then
+	if repGain.timeout and repGain.timeout >= GetTime() and not self:HasReputationModifier() then
 		local npcData = self:GetData(npcToDB[repGain.npcType], ZONE_DIFFICULTY, repGain.npcID)
 		npcData.info = npcData.info or {}
 		npcData.info.reputation = npcData.info.reputation or {}
@@ -1217,7 +1217,6 @@ function Recorder:QUEST_LOG_UPDATE(event)
 		
 		if not isHeader then
 			foundQuests = foundQuests + 1
-			
 			tempQuestLog[questID] = true
 		end
 		
@@ -1229,7 +1228,7 @@ function Recorder:QUEST_LOG_UPDATE(event)
 		questLog = CopyTable(tempQuestLog)
 		return
 	end
-		
+	
 	-- Find quests we accepted
 	if questGiverID then
 		for questID in pairs(tempQuestLog) do
@@ -1253,7 +1252,7 @@ function Recorder:QUEST_LOG_UPDATE(event)
 			end
 		end
 	end
-
+	
 	-- Find quests we abandoned or accepted
 	for questID in pairs(questLog) do
 		if not tempQuestLog[questID] then
@@ -1338,7 +1337,7 @@ function Recorder:PLAYER_TARGET_CHANGED()
 	
 	if not UnitAffectingCombat("target") and CheckInteractDistance("target", COORD_INTERACT_DISTANCE) then
 		local guid = UnitGUID("target")
-		self:RecordDataLocation("npcs", self.GUID_TYPE[guid])
+		self:RecordDataLocation("npcs", self.GUID_ID[guid])
 	end
 end
 
