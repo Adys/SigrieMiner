@@ -10,7 +10,7 @@ local GetNumFactions, GetNumLootItems, GetNumTrainerServices = GetNumFactions, G
 local GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo = GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo
 local CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist = CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist
 
-local DEBUG_LEVEL = 1
+local DEBUG_LEVEL = 4
 local ALLOWED_COORD_DIFF = 0.02
 local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
