@@ -1158,7 +1158,7 @@ end
 local lastRecordedPOI = {}
 function Recorder:RecordQuestPOI(questID)
 	local posX, posY, objectiveID = select(2, QuestPOIGetIconInfo(questID))
-	if( not posX or not posY or GetCurrentMapZone() == 0 ) then return end
+	if not posX or not posY or GetCurrentMapZone() == 0 then return end
 
 	-- Quick ID so we're not saving the POIs every single map update, which tends to be a bit spammy
 	local currentLevel = GetCurrentMapDungeonLevel()
@@ -1176,7 +1176,7 @@ function Recorder:RecordQuestPOI(questID)
 	-- You can't simply index the table by objective ID and go by that because some quests can have different coords with the same objective
 	for i=1, #(questData.poi), 5 do
 		local dataX, dataY, dataObjectiveID, dataLevel, dataZone = questData.poi[i], questData.poi[i + 1], questData.poi[i + 2], questData.poi[i + 3], questData.poi[i + 4]
-		if( dataZone == currentZone and dataLevel == currentLevel and dataObjectiveID == objectiveID and dataX == posX and dataY == posY ) then
+		if dataZone == currentZone and dataLevel == currentLevel and dataObjectiveID == objectiveID and dataX == posX and dataY == posY then
 			return
 		end
 	end
@@ -1187,7 +1187,7 @@ function Recorder:RecordQuestPOI(questID)
 	table.insert(questData.poi, currentLevel)
 	table.insert(questData.poi, currentZone)
 
-	debug(3, "Recording quest %d poi %d location at %.2f, %.2f, obj %d, in %s (%d floor)", questID, objectiveID, posX, posY, currentZone, currentLevel)
+	debug(3, "Recording quest %i poi %d location at %.2f, %.2f, in %s (%d floor)", questID, objectiveID, posX, posY, currentZone, currentLevel)
 end
 
 function Recorder:WORLD_MAP_UPDATE()
