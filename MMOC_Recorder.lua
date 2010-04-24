@@ -663,27 +663,28 @@ function Recorder:RecordCreatureData(type, unit)
 		level = -2 -- Big hack because lua tables suck at json exports
 	end
 	
+	if not npcData.info then
+		npcData.info = {}
+		npcData.info.name = UnitName(unit)
+		npcData.info.faction = self:GetFaction(UnitGUID(unit))
+		npcData.info.factionGroup = UnitFactionGroup(unit)
+		npcData.info.pvp = UnitIsPVP(unit)
+		debug(3, "%s: faction %s, factionGroup %s", npcData.info.name, npcData.info.faction or "none", npcData.info.factionGroup or "none")
+	end
 	
-	npcData.info = npcData.info or {}
-	npcData.info.name = UnitName(unit)
-	npcData.info.faction = self:GetFaction(UnitGUID(unit))
-	npcData.info.factionGroup = UnitFactionGroup(unit)
-	npcData.info.pvp = UnitIsPVP(unit)
-	
-	debug(3, "%s: faction %s, factionGroup %s", npcData.info.name, npcData.info.faction or "none", npcData.info.factionGroup or "none")
 	
 	if self.playerIsDrunk then
 		debug(4, "Discarding data: player is drunk")
 		return
 	end
 	-- Store by level for these
-	if level then
-		npcData.info[level] = npcData.info[level] or {}
+	if level and level ~= 0 and not npcData.info[level] then
+		npcData.info[level] = {}
 		npcData.info[level].maxHealth = hasAura and npcData.info.maxHealth or npcData.info.maxHealth and math.max(npcData.info.maxHealth, UnitHealthMax(unit)) or UnitHealthMax(unit)
 		npcData.info[level].maxPower = hasAura and npcData.info.maxPower or npcData.info.maxPower and math.min(npcData.info.maxPower, UnitPowerMax(unit)) or UnitPowerMax(unit)
 		npcData.info[level].powerType = UnitPowerType(unit)
 		
-		debug(2, "%s (%s #%d) Level %d: %d health, %d power (%d type)", npcData.info.name, npcType, npcID, level, npcData.info[level].maxHealth or -1, npcData.info[level].maxPower or -1, npcData.info[level].powerType or -1)
+		debug(2, "%s (%s #%d) Level %d: %d health, %d power (%d type)", npcData.info.name, npcType, npcID, level, npcData.info[level].maxHealth, npcData.info[level].maxPower, npcData.info[level].powerType or -1)
 	end
 	
 	if type and type ~= "generic" then
