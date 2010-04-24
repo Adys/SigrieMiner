@@ -356,7 +356,7 @@ function Recorder:CHAT_MSG_SYSTEM(event, message)
 	end
 end
 
--- For :GetFaction. Do we also need TOOLTIP_UNIT_LEVEL_TYPE?
+-- For Recorder.UnitFaction
 local TOOLTIP_UNIT_LEVEL = "^" .. parseText(TOOLTIP_UNIT_LEVEL)
 
 -- Rating identification
@@ -406,13 +406,13 @@ function Recorder:UpdateFactions()
 	end
 end
 
-function Recorder:GetFaction(guid)
-	if not guid then return 1 end
+function Recorder:UnitFaction(unit)
+	if not UnitExists(unit) then return 1 end
 	self:UpdateFactions()
 	
 	local faction, belowLevel
 	self.tooltip:SetOwner(UIParent, "ANCHOR_NONE")
-	self.tooltip:SetHyperlink(string.format("unit:%s", guid))
+	self.tooltip:SetHyperlink(string.format("unit:%s", UnitGUID(unit)))
 	for i=1, self.tooltip:NumLines() do
 		local text = _G["RecorderTooltipTextLeft" .. i]:GetText()
 		if text then
@@ -432,8 +432,8 @@ function Recorder:GetFaction(guid)
 	return nil
 end
 
-function Recorder:GetFactionDiscount(guid)
-	local faction = self:GetFaction(guid)
+function Recorder:UnitFactionDiscount(unit)
+	local faction = self:UnitFaction(unit)
 	if not faction then return 1 end
 	return self.factions[faction] == 5 and 0.95 or self.factions[faction] == 6 and 0.90 or self.factions[faction] == 7 and 0.85 or self.factions[faction] == 8 and 0.80 or 1
 end
@@ -666,10 +666,10 @@ function Recorder:RecordCreatureData(type, unit)
 	if not npcData.info then
 		npcData.info = {}
 		npcData.info.name = UnitName(unit)
-		npcData.info.faction = self:GetFaction(UnitGUID(unit))
+		npcData.info.faction = self:UnitFaction(unit)
 		npcData.info.factionGroup = UnitFactionGroup(unit)
 		npcData.info.pvp = UnitIsPVP(unit)
-		debug(3, "%s: faction %s, factionGroup %s", npcData.info.name, npcData.info.faction or "none", npcData.info.factionGroup or "none")
+		debug(3, "%s: faction %s, factionGroup %s, pvp %s", npcData.info.name, npcData.info.faction or "none", npcData.info.factionGroup or "none", npcData.info.pvp and "on" or "off")
 	end
 	
 	
@@ -702,7 +702,7 @@ function Recorder:UpdateTrainerData(npcData)
 	if( npcData.teaches ) then return end
 	
 	local guid = UnitGUID("npc")
-	local factionDiscount = self:GetFactionDiscount(guid)
+	local factionDiscount = self:UnitFactionDiscount("npc")
 	local trainerSpellMap = {}
 
 	npcData.info.greeting = GetTrainerGreetingText()
@@ -809,7 +809,7 @@ function Recorder:UpdateMerchantData(npcData)
 	end
 	
 	
-	local factionDiscount = self:GetFactionDiscount(UnitGUID("npc"))
+	local factionDiscount = self:UnitFactionDiscount("npc")
 	for i=1, GetMerchantNumItems() do
 		local name, _, price, quantity, limitedQuantity, _, extendedCost = GetMerchantItemInfo(i)
 		if( name ) then
@@ -1187,7 +1187,7 @@ function Recorder:RecordQuestPOI(questID)
 	table.insert(questData.poi, currentLevel)
 	table.insert(questData.poi, currentZone)
 
-	debug(3, "Recording quest poi %s location at %.2f, %.2f, obj %d, in %s (%d floor)", questID, posX, posY, objectiveID, currentZone, currentLevel)
+	debug(3, "Recording quest %d poi %d location at %.2f, %.2f, obj %d, in %s (%d floor)", questID, objectiveID, posX, posY, currentZone, currentLevel)
 end
 
 function Recorder:WORLD_MAP_UPDATE()
