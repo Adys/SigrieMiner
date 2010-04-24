@@ -16,7 +16,7 @@ local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
 local RECORD_TIMER = 0.75 -- Timer between last relevant event and GetTime() to acquire a loot source
 local LOOT_MAX_LATENCY = 400 -- In milliseconds, discard loot recording if latency is superior
-local COORD_INTERACT_DISTANCE = 2 -- Record coords at this distance. 1 = inspect, 2 = trade, 3 = duel, 4 = follow
+local COORD_INTERACT_DISTANCE = 3 -- Record coords at this distance. 1 = inspect, 2 = trade, 3 = duel, 4 = follow
 
 local npcToDB = {["npc"] = "npcs", ["item"] = "items", ["object"] = "objects"}
 local NPC_TYPES = {
