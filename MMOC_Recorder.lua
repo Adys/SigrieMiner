@@ -151,7 +151,7 @@ local playerName = UnitName("player")
 
 if DEBUG_LEVEL > 0 then MMOCRecorder = Recorder end
 local function debug(level, msg, ...)
-	if level <= DEBUG_LEVEL then
+	if DEBUG_LEVEL >= level then
 		print(string.format(msg, ...))
 	end
 end
@@ -307,41 +307,41 @@ function Recorder:GetData(parent, child, key)
 	return self.db[parent][child][key]
 end
 
--- NPC identification
-local npcIDMetatable = {
+-- GUID identification
+local guidIDMetatable = {
 	__index = function(tbl, guid)
-		local id = tonumber(string.sub(guid, -12, -7), 16) or false
+		local id = tonumber(guid:sub(-12, -7), 16) or false
 		rawset(tbl, guid, id)
 		return id
 	end
 }
 
-local npcTypeMetatable = {
+local guidTypeMetatable = {
 	__index = function(tbl, guid)
-		local type = tonumber(string.sub(guid, 3, 5), 16)
-		local npcType = false
+		local type = tonumber(guid:sub(3, 5), 16)
+		local guidType = false
 		if type == 3857 or type == 3921 then
-			npcType = "object"
-		elseif type == 1024 then
-			npcType = "item"
+			guidType = "object"
+		elseif type == 1024 or type == 1040 then
+			guidType = "item"
 		elseif bit.band(type, 0x00f) == 3 or bit.band(type, 0x00f) == 5 then
-			npcType = "npc"
+			guidType = "npc"
 		end
 		
-		rawset(tbl, guid, npcType)
-		return npcType
+		rawset(tbl, guid, guidType)
+		return guidType
 	end,
 }
 
 function Recorder:PLAYER_LEAVING_WORLD()
-	self.GUID_ID = setmetatable({}, npcIDMetatable)
-	self.GUID_TYPE = setmetatable({}, npcTypeMetatable)
+	self.GUID_ID = setmetatable({}, guidIDMetatable)
+	self.GUID_TYPE = setmetatable({}, guidTypeMetatable)
 end
 
 local function parseText(text)
-	text = string.gsub(text, "%%d", "(%%d+)")
-	text = string.gsub(text, "%%s", "(.+)")
-	return string.lower(string.trim(text))
+	text = text:gsub("%%d", "(%%d+)")
+	text = text:gsub("%%s", "(.+)")
+	return text:trim():lower()
 end
 
 -- Drunk identification, so we can discard tracking levels until no longer drunk
