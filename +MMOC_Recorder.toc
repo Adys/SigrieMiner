@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: MMO-Champion Recorder
 ## Notes: In-game data recorder for http://db.mmo-champion.com
-## Author: Shadowed
+## Author: Shadowed, Adys
 ## SavedVariablesPerCharacter: SigrieDB
 
 localization.enUS.lua
