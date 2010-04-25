@@ -420,11 +420,9 @@ function Recorder:UnitFaction(unit)
 			if not belowLevel and text:lower():match(TOOLTIP_UNIT_LEVEL) then
 				belowLevel = true
 			elseif belowLevel then
-				if self.factions[text] then
-					return text
-				else
-					break
-				end
+				if text == PVP then return end
+				if self.factions[text] then return text end
+				break
 			end
 		end
 	end
