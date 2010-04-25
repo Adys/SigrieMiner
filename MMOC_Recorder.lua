@@ -1199,7 +1199,6 @@ function Recorder:WORLD_MAP_UPDATE()
 end
 
 -- Quest log updated, see what changed quest-wise
-local questGiverType, questGiverID
 local tempQuestLog, questByName, questLog = {}, {}
 function Recorder:QUEST_LOG_UPDATE(event)
 	-- Scan quest log
@@ -1224,11 +1223,11 @@ function Recorder:QUEST_LOG_UPDATE(event)
 	end
 	
 	-- Find quests we accepted
-	if questGiverID then
+	if self.questGiverID then
 		for questID in pairs(tempQuestLog) do
-			if not questLog[questID] and questGiverType then
+			if not questLog[questID] and self.questGiverType then
 				local questData = self:GetBasicData("quests", questID)
-				questData.startsID = questGiverID * (questGiverType == "npc" and 1 or -1)
+				questData.startsID = self.questGiverID * (self.questGiverType == "npc" and 1 or -1)
 				
 				for i=1, foundQuests do
 					local logID = GetQuestIndexForTimer(i)
@@ -1241,7 +1240,7 @@ function Recorder:QUEST_LOG_UPDATE(event)
 					end
 				end
 				
-				debug(2, "Quest #%d starts at %s #%d", questID, questGiverType or "nil", questGiverID or -1)
+				debug(2, "Quest #%d starts at %s #%d", questID, self.questGiverType or "nil", self.questGiverID or -1)
 				self:RecordQuestPOI(questID)
 			end
 		end
@@ -1257,14 +1256,14 @@ function Recorder:QUEST_LOG_UPDATE(event)
 				
 				debug(2, "Quest #%d abandoned", questID)
 				break
-			elseif not abandonedName and questGiverID then
+			elseif not abandonedName and self.questGiverID then
 				questLog[questID] = nil
 				lastRecordedPOI[questID] = nil
 				
 				local questData = self:GetBasicData("quests", questID)
-				questData.endsID = questGiverID * (questGiverType == "npc" and 1 or -1)
+				questData.endsID = self.questGiverID * (self.questGiverType == "npc" and 1 or -1)
 				
-				debug(2, "Quest #%d ends at %s #%d.", questID, questGiverType or "nil", questGiverID or -1)	
+				debug(2, "Quest #%d ends at %s #%d.", questID, self.questGiverType or "nil", self.questGiverID or -1)
 			end
 		end
 	end
@@ -1279,8 +1278,11 @@ function Recorder:QuestProgress()
 	
 	-- Don't need to record start location of items
 	if type ~= "item" then
-		questGiverID, questGiverType = id, type
+		self.questGiverID, self.questGiverType = id, type
 		self:RecordDataLocation(npcToDB[type], id)
+	else
+		-- We need to do this otherwise we might run into some leftover values when accepting the quest
+		self.questGiverID, self.questGiverType = nil, nil
 	end
 end
 
