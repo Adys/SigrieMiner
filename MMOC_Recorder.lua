@@ -896,9 +896,10 @@ function Recorder:UI_ERROR_MESSAGE(event, message)
 			
 			local npcData = self:GetCreatureDB(unit)
 			npcData.info = npcData.info or {}
-			npcData.info.noPockets = true
-			
-			debug(3, "Mob %s (%s) has no pockets", self.activeSpell.target, unit)
+			if not npcData.info.noPockets then
+				npcData.info.noPockets = true
+				debug(3, "Mob %s (%s) has no pockets", self.activeSpell.target, unit)
+			end
 			self:clearActiveSpell()
 		end
 	end
