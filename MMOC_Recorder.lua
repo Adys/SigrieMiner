@@ -11,7 +11,7 @@ local GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo = GetMapInf
 local CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist = CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist
 
 local DEBUG_LEVEL = 4
-local ALLOWED_COORD_DIFF = 0.02
+local ALLOWED_COORD_DIFF = 0.05
 local LOOT_EXPIRATION = 10 * 60
 local ZONE_DIFFICULTY = 0
 local RECORD_TIMER = 0.75 -- Timer between last relevant event and GetTime() to acquire a loot source
