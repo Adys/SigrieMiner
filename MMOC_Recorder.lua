@@ -407,7 +407,7 @@ function Recorder:UpdateFactions()
 end
 
 function Recorder:UnitFaction(unit)
-	if not UnitExists(unit) then return 1 end
+	if not UnitExists(unit) then return end
 	self:UpdateFactions()
 	
 	local faction, belowLevel
