@@ -9,6 +9,7 @@ local GetMerchantItemCostInfo, GetMerchantItemCostItem, GetMerchantItemLink = Ge
 local GetNumFactions, GetNumLootItems, GetNumTrainerServices = GetNumFactions, GetNumLootItems, GetNumTrainerServices
 local GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo = GetMapInfo, GetTitleText, GetTrainerGreetingText, GetSpellInfo
 local CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist = CheckInteractDistance, CheckBinderDist, CheckSpiritHealerDist, CheckTalentMasterDist
+local IsLinuxClient, IsMacClient, IsWindowsClient = IsLinuxClient, IsMacClient, IsWindowsClient
 
 local DEBUG_LEVEL = 4
 local ALLOWED_COORD_DIFF = 0.05
@@ -156,6 +157,15 @@ local function debug(level, msg, ...)
 	end
 end
 
+function Recorder:GetPlatform()
+	-- Return the client's target platform
+	-- Stored for statistical and debug purposes
+	if IsLinuxClient() then return "LINUX" end
+	if IsWindowsClient() then return "WINDOWS" end
+	if IsMacClient() then return "MACOS" end
+	return "UNKNOWN"
+end
+
 function Recorder:InitializeDB()
 	local version, build = GetBuildInfo()
 	build = tonumber(build) or -1
@@ -176,6 +186,7 @@ function Recorder:InitializeDB()
 	SigrieDB.version = version
 	SigrieDB.build = SigrieDB.build or build
 	SigrieDB.locale = GetLocale()
+	SigrieDB.platform = self:GetPlatform()
 	SigrieDB.addonVersion = self.version
 
 	-- On PLAYER_LOGOUT, this gets written to SigrieDB.factions
