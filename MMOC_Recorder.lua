@@ -1,5 +1,5 @@
 local Recorder = select(2, ...)
-Recorder.version = 1
+Recorder.version = 2 -- Public uploader beta
 
 local L = Recorder.L
 
