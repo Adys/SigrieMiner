@@ -153,7 +153,7 @@ local playerName = UnitName("player")
 if DEBUG_LEVEL > 0 then MMOCRecorder = Recorder end
 local function debug(level, msg, ...)
 	if DEBUG_LEVEL >= level then
-		print(string.format(msg, ...))
+		print(msg:format(...))
 	end
 end
 
