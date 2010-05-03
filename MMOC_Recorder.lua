@@ -799,7 +799,7 @@ end
 -- Record merchant items
 local quickSoldMap = {}
 function Recorder:UpdateMerchantData(npcData)
-	if( CanMerchantRepair() ) then
+	if CanMerchantRepair() then
 		self:RecordCreatureType(npcData, "canrepair")
 	end
 	
@@ -809,7 +809,7 @@ function Recorder:UpdateMerchantData(npcData)
 	table.wipe(quickSoldMap)
 	for _, item in pairs(npcData.sold) do
 		local id = item.id + item.price
-		if( item.itemCost ) then
+		if item.itemCost then
 			for itemID, amount in pairs(item.itemCost) do
 				id = id + itemID + amount
 			end
@@ -822,7 +822,7 @@ function Recorder:UpdateMerchantData(npcData)
 	local factionDiscount = self:UnitFactionDiscount("npc")
 	for i=1, GetMerchantNumItems() do
 		local name, _, price, quantity, limitedQuantity, _, extendedCost = GetMerchantItemInfo(i)
-		if( name ) then
+		if name then
 			local discard = false
 			price = price / factionDiscount	
 			
@@ -1471,6 +1471,7 @@ end
 -- It's a way of identifying what a NPC does without the player checking out every single option
 local function checkGossip(...)
 	local npcData = Recorder:RecordCreatureData(nil, "npc")
+	if not npcData then return end
 	
 	for i=1, select("#", ...), 2 do
 		local text, type = select(i, ...)
