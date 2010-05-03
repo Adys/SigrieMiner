@@ -654,6 +654,7 @@ function Recorder:GetCreatureDB(unit)
 end
 
 function Recorder:RecordCreatureType(npcData, type)
+	if not npcData then return end
 	npcData.info.bitType = npcData.info.bitType and bit.bor(npcData.info.bitType, NPC_TYPES[type]) or NPC_TYPES[type]
 	debug(3, "Recording npc %s, type %s", npcData.info and npcData.info.name or "nil", type)
 end
